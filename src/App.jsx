@@ -189,19 +189,19 @@ export default function App() {
   }, []);
 
   // ── Data fetching ───────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    if (!session) return;
-    setLoading(true);
-    try {
-      const [prodRes, bomRes, mpsRes, woRes, poRes, auditRes, demandForecastRes] = await Promise.all([
-        supabase.from('products').select('*'),
-        supabase.from('bom').select('*'),
-        supabase.from('mps').select('*').order('week_start', { ascending: true }),
-        supabase.from('work_orders').select('*').order('scheduled_date', { ascending: true }),
-        supabase.from('purchase_orders').select('*').order('order_date', { ascending: false }),
-        supabase.from('audit_log').select('*').order('changed_at', { ascending: false }).limit(200),
-        supabase.from('demand_forecast').select('*'),
-      ]);
+const fetchData = useCallback(async () => {
+  console.log('🚀 fetchData called (simplified)');
+  setLoading(true);
+  try {
+    const [prodRes, bomRes, mpsRes, woRes, poRes, auditRes, demandForecastRes] = await Promise.all([
+      supabase.from('products').select('*'),
+      supabase.from('bom').select('*'),
+      supabase.from('mps').select('*').order('week_start', { ascending: true }),
+      supabase.from('work_orders').select('*').order('scheduled_date', { ascending: true }),
+      supabase.from('purchase_orders').select('*').order('order_date', { ascending: false }),
+      supabase.from('audit_log').select('*').order('changed_at', { ascending: false }).limit(200),
+      supabase.from('demand_forecast').select('*'),
+    ]);
       if (prodRes.error) throw prodRes.error;
       if (bomRes.error) throw bomRes.error;
       if (mpsRes.error) throw mpsRes.error;
@@ -231,8 +231,17 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
+    console.log('🔄 useEffect triggered, session:', session); 
     if (session) fetchData();
   }, [session, fetchData]);
+  useEffect(() => {
+  const testFetch = async () => {
+    console.log('🧪 Direct test fetch starting...');
+    const { data, error } = await supabase.from('products').select('*');
+    console.log('📦 Direct fetch result:', data, error);
+  };
+  testFetch();
+}, []);
 
   // ── Demand forecast: convert DB rows to format used by DemandView ──
   const setDemandRowsFromDB = useCallback((dbData) => {
