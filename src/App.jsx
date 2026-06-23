@@ -162,11 +162,11 @@ export default function App() {
   const [editFormData, setEditFormData] = useState({});
   const [editingPOId, setEditingPOId] = useState(null);
   const [editPOData, setEditPOData] = useState({
-  supplier: '',
-  unit_cost: 0,
-  expected_date: '',
-  notes: '',
-});
+    supplier: '',
+    unit_cost: 0,
+    expected_date: '',
+    notes: '',
+    });
   const [bomParent, setBomParent] = useState(FINISHED_GOODS[0]?.id || '');
   const [mpsView, setMpsView] = useState('schedule');
 
@@ -189,19 +189,19 @@ export default function App() {
   }, []);
 
   // ── Data fetching ───────────────────────────────────────────────
-const fetchData = useCallback(async () => {
-  console.log('🚀 fetchData called (simplified)');
-  setLoading(true);
-  try {
-    const [prodRes, bomRes, mpsRes, woRes, poRes, auditRes, demandForecastRes] = await Promise.all([
-      supabase.from('products').select('*'),
-      supabase.from('bom').select('*'),
-      supabase.from('mps').select('*').order('week_start', { ascending: true }),
-      supabase.from('work_orders').select('*').order('scheduled_date', { ascending: true }),
-      supabase.from('purchase_orders').select('*').order('order_date', { ascending: false }),
-      supabase.from('audit_log').select('*').order('changed_at', { ascending: false }).limit(200),
-      supabase.from('demand_forecast').select('*'),
-    ]);
+  const fetchData = useCallback(async () => {
+    if (!session) return;
+    setLoading(true);
+    try {
+      const [prodRes, bomRes, mpsRes, woRes, poRes, auditRes, demandForecastRes] = await Promise.all([
+        supabase.from('products').select('*'),
+        supabase.from('bom').select('*'),
+        supabase.from('mps').select('*').order('week_start', { ascending: true }),
+        supabase.from('work_orders').select('*').order('scheduled_date', { ascending: true }),
+        supabase.from('purchase_orders').select('*').order('order_date', { ascending: false }),
+        supabase.from('audit_log').select('*').order('changed_at', { ascending: false }).limit(200),
+        supabase.from('demand_forecast').select('*'),
+      ]);
       if (prodRes.error) throw prodRes.error;
       if (bomRes.error) throw bomRes.error;
       if (mpsRes.error) throw mpsRes.error;
@@ -231,17 +231,8 @@ const fetchData = useCallback(async () => {
   }, [session]);
 
   useEffect(() => {
-    console.log('🔄 useEffect triggered, session:', session); 
     if (session) fetchData();
   }, [session, fetchData]);
-  useEffect(() => {
-  const testFetch = async () => {
-    console.log('🧪 Direct test fetch starting...');
-    const { data, error } = await supabase.from('products').select('*');
-    console.log('📦 Direct fetch result:', data, error);
-  };
-  testFetch();
-}, []);
 
   // ── Demand forecast: convert DB rows to format used by DemandView ──
   const setDemandRowsFromDB = useCallback((dbData) => {
@@ -1502,7 +1493,8 @@ const fetchData = useCallback(async () => {
     );
   }
 
-// ── PROCUREMENT TAB (with inline editing) ────────────────────────
+  // ── PROCUREMENT TAB ───────────────────────────────────────────
+  // ── PROCUREMENT TAB (with inline editing) ────────────────────────
 function ProcurementTab() {
   const totalVal = purchaseOrders.filter(p => p.status === 'Open').reduce((s, p) => s + p.quantity * (p.unit_cost || 0), 0);
 
@@ -1649,7 +1641,6 @@ function ProcurementTab() {
     </div>
   );
 }
-
   // ── BOM TAB (with Enroll Mode) ────────────────────────────────
   function BOMTab() {
     const [mode, setMode] = useState('edit');
@@ -2141,7 +2132,7 @@ function ProcurementTab() {
               <div style={{ fontSize: 32 }}>🌶️</div>
               <div>
                 <div style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: .5 }}>CHILIPHILIC PPIC</div>
-                <div style={{ color: '#fcd34d', fontSize: 11, fontWeight: 500, letterSpacing: .8 }}>HOT SAUCE MANUFACTURING — PPIC SUPERVISOR EDITION</div>
+                <div style={{ color: '#fcd34d', fontSize: 11, fontWeight: 500, letterSpacing: .8 }}>HOT SAUCE MANUFACTURING</div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
