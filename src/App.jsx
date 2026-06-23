@@ -2140,7 +2140,7 @@ function ProcurementTab() {
         <div style={{ background: '#1a1a1a', borderRadius: 16, padding: 40, border: '1px solid #2d2d2d', maxWidth: 380, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,.6)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🌶️</div>
           <div style={{ color: '#f8fafc', fontWeight: 800, fontSize: 22, marginBottom: 4 }}>CHILIPHILIC REPUBLIC</div>
-          <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 28 }}>Hot Sauce Manufacturing</div>
+          <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 28 }}>HomeCraft Hot Sauce</div>
           <form onSubmit={handleLogin} style={{ display: 'grid', gap: 12 }}>
             <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" required />
             <Input label="Password" type="password" value={password} onChange={setPassword} placeholder="••••••••" required />
@@ -2170,8 +2170,8 @@ function ProcurementTab() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ fontSize: 32 }}>🌶️</div>
                   <div>
-                    <div style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: .5 }}>CHILIPHILIC PPIC</div>
-                    <div style={{ color: '#fcd34d', fontSize: 11, fontWeight: 500, letterSpacing: .8 }}>HOT SAUCE MANUFACTURING</div>
+                    <div style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: .5 }}>CHILIPHILIC REPUBLIC</div>
+                    <div style={{ color: '#fcd34d', fontSize: 11, fontWeight: 500, letterSpacing: .8 }}>HOMECRAFT HOT SAUCE</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
