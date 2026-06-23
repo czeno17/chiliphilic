@@ -2088,7 +2088,7 @@ function ProcurementTab() {
     </div>;
   }
 
-  // ── HISTORY TAB ────────────────────────────────────────────────
+  // ─── HISTORY TAB ────────────────────────────────────────────────
   function HistoryTab() {
     return <Card title="Activity Log" accent="#64748b">
       {auditLogs.length === 0 ? <p style={{ color: '#64748b' }}>No activity yet.</p> :
@@ -2119,74 +2119,123 @@ function ProcurementTab() {
     </Card>;
   }
 
+  // ─── LOGIN FORM ────────────────────────────────────────────────────
+  function LoginForm() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleLogin = async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      setError('');
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) setError(error.message);
+      setLoading(false);
+    };
+
+    return (
+      <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#1a1a1a', borderRadius: 16, padding: 40, border: '1px solid #2d2d2d', maxWidth: 380, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,.6)' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🌶️</div>
+          <div style={{ color: '#f8fafc', fontWeight: 800, fontSize: 22, marginBottom: 4 }}>CHILIPHILIC REPUBLIC</div>
+          <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 28 }}>Hot Sauce Manufacturing</div>
+          <form onSubmit={handleLogin} style={{ display: 'grid', gap: 12 }}>
+            <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" required />
+            <Input label="Password" type="password" value={password} onChange={setPassword} placeholder="••••••••" required />
+            {error && <div style={{ color: '#dc2626', fontSize: 12, textAlign: 'center' }}>{error}</div>}
+            <Btn onClick={handleLogin} disabled={loading} variant="primary" size="lg">
+              {loading ? 'Signing in…' : 'Sign In'}
+            </Btn>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   // ─── MAIN RENDER ─────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', fontFamily: "'Segoe UI', system-ui, sans-serif", color: '#f8fafc' }}>
-      {notif && <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 999, background: notif.type === 'danger' ? '#dc2626' : notif.type === 'info' ? '#f97316' : notif.type === 'warning' ? '#f59e0b' : '#ea580c', color: '#fff', padding: '12px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: '0 4px 20px rgba(0,0,0,.5)', maxWidth: 360 }}>{notif.msg}</div>}
+      {!session ? (
+        <LoginForm />
+      ) : (
+        <>
+          {notif && <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 999, background: notif.type === 'danger' ? '#dc2626' : notif.type === 'info' ? '#f97316' : notif.type === 'warning' ? '#f59e0b' : '#ea580c', color: '#fff', padding: '12px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: '0 4px 20px rgba(0,0,0,.5)', maxWidth: 360 }}>{notif.msg}</div>}
 
-      {/* HEADER */}
-      <div style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #b91c1c 40%, #d97706 100%)', padding: '0 24px', boxShadow: '0 4px 20px rgba(0,0,0,.6)' }}>
-        <div style={{ maxWidth: 1320, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ fontSize: 32 }}>🌶️</div>
-              <div>
-                <div style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: .5 }}>CHILIPHILIC PPIC</div>
-                <div style={{ color: '#fcd34d', fontSize: 11, fontWeight: 500, letterSpacing: .8 }}>HOT SAUCE MANUFACTURING</div>
+          {/* HEADER */}
+          <div style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #b91c1c 40%, #d97706 100%)', padding: '0 24px', boxShadow: '0 4px 20px rgba(0,0,0,.6)' }}>
+            <div style={{ maxWidth: 1320, margin: '0 auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ fontSize: 32 }}>🌶️</div>
+                  <div>
+                    <div style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: .5 }}>CHILIPHILIC PPIC</div>
+                    <div style={{ color: '#fcd34d', fontSize: 11, fontWeight: 500, letterSpacing: .8 }}>HOT SAUCE MANUFACTURING</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                  <div style={{ textAlign: 'right' }}><div style={{ color: '#fcd34d', fontSize: 10 }}>TODAY</div><div style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{today()}</div></div>
+                  <div style={{ textAlign: 'right' }}><div style={{ color: '#fcd34d', fontSize: 10 }}>DAILY CAP</div><div style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{fmt(DAILY_CAPACITY)} bottles</div></div>
+                  {alerts.criticalStock.length + alerts.overdueOrders.length > 0 && <div style={{ background: '#dc2626', color: '#fff', borderRadius: 99, padding: '5px 12px', fontSize: 12, fontWeight: 700, animation: 'pulse 1.5s infinite' }}>🚨 {alerts.criticalStock.length + alerts.overdueOrders.length} Alerts</div>}
+                </div>
+                <button 
+                  onClick={() => supabase.auth.signOut()} 
+                  style={{ background: 'transparent', border: '1px solid #fcd34d44', color: '#fcd34d', padding: '6px 14px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, transition: 'all .2s' }}
+                  onMouseOver={e => e.target.style.background = '#fcd34d22'}
+                  onMouseOut={e => e.target.style.background = 'transparent'}
+                >
+                  Sign Out
+                </button>
+              </div>
+              {/* TABS – black background, bigger font, active white */}
+              <div style={{ display: 'flex', gap: 2, overflowX: 'auto', paddingBottom: 1 }}>
+                {TABS.map(t => (
+                  <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+                    padding: '12px 20px',
+                    border: 'none',
+                    background: '#0a0a0a',
+                    color: activeTab === t.id ? '#ffffff' : '#94a3b8',
+                    fontWeight: activeTab === t.id ? 700 : 500,
+                    fontSize: 16,
+                    borderRadius: '8px 8px 0 0',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    borderBottom: activeTab === t.id ? '3px solid #dc2626' : '3px solid transparent',
+                    transition: 'all .2s',
+                    opacity: activeTab === t.id ? 1 : 0.8,
+                    marginRight: '2px',
+                  }}>
+                    {t.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <div style={{ textAlign: 'right' }}><div style={{ color: '#fcd34d', fontSize: 10 }}>TODAY</div><div style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{today()}</div></div>
-              <div style={{ textAlign: 'right' }}><div style={{ color: '#fcd34d', fontSize: 10 }}>DAILY CAP</div><div style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{fmt(DAILY_CAPACITY)} bottles</div></div>
-              {alerts.criticalStock.length + alerts.overdueOrders.length > 0 && <div style={{ background: '#dc2626', color: '#fff', borderRadius: 99, padding: '5px 12px', fontSize: 12, fontWeight: 700, animation: 'pulse 1.5s infinite' }}>🚨 {alerts.criticalStock.length + alerts.overdueOrders.length} Alerts</div>}
-            </div>
           </div>
-          {/* TABS – black background, bigger font, active white */}
-          <div style={{ display: 'flex', gap: 2, overflowX: 'auto', paddingBottom: 1 }}>
-            {TABS.map(t => (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-                padding: '12px 20px',
-                border: 'none',
-                background: '#0a0a0a',
-                color: activeTab === t.id ? '#ffffff' : '#94a3b8',
-                fontWeight: activeTab === t.id ? 700 : 500,
-                fontSize: 16,
-                borderRadius: '8px 8px 0 0',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                borderBottom: activeTab === t.id ? '3px solid #dc2626' : '3px solid transparent',
-                transition: 'all .2s',
-                opacity: activeTab === t.id ? 1 : 0.8,
-                marginRight: '2px',
-              }}>
-                {t.label}
-              </button>
-            ))}
+
+          {/* CONTENT */}
+          <div style={{ maxWidth: 1320, margin: '0 auto', padding: '24px 20px' }}>
+            {activeTab === 'dashboard' && <Dashboard />}
+            {activeTab === 'products' && <ProductsTab />}
+            {activeTab === 'mps' && <MPSTab />}
+            {activeTab === 'production' && <WorkOrdersTab />}
+            {activeTab === 'mrp' && <MRPTab />}
+            {activeTab === 'inventory' && <InventoryTab />}
+            {activeTab === 'procurement' && <ProcurementTab />}
+            {activeTab === 'bom' && <BOMTab />}
+            {activeTab === 'alerts' && <AlertsTab />}
+            {activeTab === 'history' && <HistoryTab />}
           </div>
-        </div>
-      </div>
 
-      {/* CONTENT */}
-      <div style={{ maxWidth: 1320, margin: '0 auto', padding: '24px 20px' }}>
-        {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'products' && <ProductsTab />}
-        {activeTab === 'mps' && <MPSTab />}
-        {activeTab === 'production' && <WorkOrdersTab />}
-        {activeTab === 'mrp' && <MRPTab />}
-        {activeTab === 'inventory' && <InventoryTab />}
-        {activeTab === 'procurement' && <ProcurementTab />}
-        {activeTab === 'bom' && <BOMTab />}
-        {activeTab === 'alerts' && <AlertsTab />}
-        {activeTab === 'history' && <HistoryTab />}
-      </div>
-
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
-        input:focus, select:focus { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
-        ::-webkit-scrollbar { height: 6px; width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-        ::-webkit-scrollbar-track { background: #1a1a1a; }
-      `}</style>
+          <style>{`
+            @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+            input:focus, select:focus { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+            ::-webkit-scrollbar { height: 6px; width: 6px; }
+            ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+            ::-webkit-scrollbar-track { background: #1a1a1a; }
+          `}</style>
+        </>
+      )}
     </div>
   );
 }
