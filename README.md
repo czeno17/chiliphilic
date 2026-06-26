@@ -119,7 +119,7 @@ npm run test
 
 ## 🤖 AI Assistance
 
-This project was developed with significant AI assistance (Google’s Gemini model). The AI contributed to:
+This project was developed with significant AI assistance. The AI contributed to:
 
 - Architecture design and database schema planning.
 - Code generation for React components, MRP engine, and Supabase integration.
