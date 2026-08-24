@@ -2282,24 +2282,23 @@ function BOMTab() {
     );
   }
 
-  // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────────
-  const shortcuts = {
-    'ctrl+n': () => {
-      if (activeTab === 'production') {
-        // Focus on work order form
-        document.querySelector('input[placeholder="Qty (bottles)"]')?.focus();
-      } else {
-        setActiveTab('production');
-      }
-    },
-    'ctrl+r': () => fetchData(),
-    'ctrl+f': () => {
-      const searchInput = document.querySelector('input[placeholder*="Search"]');
-      if (searchInput) searchInput.focus();
-    },
-  };
+ // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────────
+const shortcuts = {
+  'alt+n': () => { 
+    if (activeTab === 'production') {
+      document.querySelector('input[placeholder="Qty (bottles)"]')?.focus();
+    } else {
+      setActiveTab('production');
+    }
+  },
+  'alt+r': () => fetchData(),  
+  'alt+f': () => {  
+    const searchInput = document.querySelector('input[placeholder*="Search"]');
+    if (searchInput) searchInput.focus();
+  },
+};
 
-  useKeyboard(shortcuts);
+useKeyboard(shortcuts);
 
 // ─── MAIN RENDER ─────────────────────────────────────────────────────
 if (!session) {

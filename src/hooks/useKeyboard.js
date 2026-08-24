@@ -7,18 +7,15 @@ export const useKeyboard = (shortcuts, enabled = true) => {
     // Don't trigger shortcuts when typing in input fields
     const { tagName, isContentEditable } = event.target;
     if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT' || isContentEditable) {
-      // Allow Ctrl+A for select all
       if (event.key === 'a' && event.ctrlKey) return;
       return;
     }
     
-    // Check for modifiers
     const ctrl = event.ctrlKey || event.metaKey;
     const shift = event.shiftKey;
     const alt = event.altKey;
     
     for (const [key, handler] of Object.entries(shortcuts)) {
-      // Skip if handler is not a function (it might be a string description)
       if (typeof handler !== 'function') continue;
       
       const parts = key.split('+');
@@ -35,6 +32,7 @@ export const useKeyboard = (shortcuts, enabled = true) => {
       
       if (ctrlMatch && shiftMatch && altMatch && keyMatch) {
         event.preventDefault();
+        event.stopPropagation();
         handler(event);
         break;
       }
@@ -47,7 +45,6 @@ export const useKeyboard = (shortcuts, enabled = true) => {
   }, [handleKeyDown]);
 };
 
-// Helper to display shortcut keys
 export const formatShortcut = (shortcut) => {
   const parts = shortcut.split('+');
   const display = {

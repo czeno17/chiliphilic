@@ -20,20 +20,20 @@ export const MainLayout = ({ children, activeTab, onTabChange }) => {
   }, []);
   
   // Keyboard shortcut for sidebar toggle
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-        e.preventDefault();
-        setSidebarOpen(prev => !prev);
-      }
-      if (e.key === 'Escape' && isMobile && sidebarOpen) {
-        setSidebarOpen(false);
-      }
-    };
-    
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isMobile, sidebarOpen]);
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    if (e.altKey && e.key === 'b') {  
+      e.preventDefault();
+      setSidebarOpen(prev => !prev);
+    }
+    if (e.key === 'Escape' && isMobile && sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  };
+  
+  document.addEventListener('keydown', handleKeyDown);
+  return () => document.removeEventListener('keydown', handleKeyDown);
+}, [isMobile, sidebarOpen]);
   
   return (
     <div className={styles.layout}>
