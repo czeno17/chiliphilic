@@ -1,5 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from './supabaseClient';
+import { MainLayout } from './components/layout/MainLayout';
+import { Card } from './components/common/Card';
+import { Container } from './components/common/Container';
+import { ResponsiveTable } from './components/common/ResponsiveTable';
+import { KeyboardShortcuts } from './components/common/KeyboardShortcuts';
+import { useKeyboard } from './hooks/useKeyboard';
+import './styles/global.css';
 
 // ─── HELPERS ──────────────────────────────────────────────────────────
 const today = () => new Date().toISOString().slice(0, 10);
@@ -20,7 +27,6 @@ const FINISHED_GOODS = [
   { id: 'FG-004', name: 'A Taste of Bangalore' },
 ];
 
-// Fallback units (only used if product has no unit stored)
 const UNITS = {
   'RM-CHILI-CAY': 'g', 'RM-VEG-GAR': 'g', 'RM-SP-CUM': 'g', 'RM-SP-JUN': 'g',
   'RM-SP-CHFL': 'g', 'RM-CHEM-SALT': 'g', 'RM-LIQ-WAT': 'g', 'RM-LIQ-WVIN': 'g',
@@ -48,58 +54,61 @@ const WEEKLY_CAPACITY = DAILY_CAPACITY * 6;
 const HORIZON = 6;
 
 // ─── UI COMPONENTS (memoized) ──────────────────────────────────────
-const Badge = memo(({ type, children }) => {
+const Badge = React.memo(({ type, children }) => {
   const colors = {
-    success: '#ea580c',
-    warning: '#f59e0b',
-    danger: '#dc2626',
-    info: '#f97316',
-    neutral: '#4b5563',
+    success: '#4CAF50',
+    warning: '#FFC107',
+    danger: '#E63946',
+    info: '#2196F3',
+    neutral: '#808080',
   };
-  return <span style={{ background: colors[type] || colors.neutral, color: '#fff', padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: .5, whiteSpace: 'nowrap' }}>{children}</span>;
+  return <span style={{ 
+    background: colors[type] || colors.neutral, 
+    color: '#fff', 
+    padding: '2px 10px', 
+    borderRadius: 999, 
+    fontSize: 11, 
+    fontWeight: 700, 
+    letterSpacing: .5, 
+    whiteSpace: 'nowrap' 
+  }}>{children}</span>;
 });
 
-const Card = memo(({ title, subtitle, children, accent, style = {}, headerRight }) => {
-  const accentColor = accent || '#dc2626';
-  return <div style={{ background: '#1a1a1a', borderRadius: 12, boxShadow: '0 4px 24px rgba(0,0,0,.5)', border: '1px solid #2d2d2d', overflow: 'hidden', ...style }}>
-    {title && <div style={{ padding: '16px 20px', borderBottom: '1px solid #2d2d2d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ width: 4, height: 24, background: accentColor, borderRadius: 2, display: 'inline-block', flexShrink: 0 }} />
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#f8fafc' }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{subtitle}</div>}
-        </div>
-      </div>
-      {headerRight && <div>{headerRight}</div>}
-    </div>}
-    <div style={{ padding: 20, color: '#f8fafc' }}>{children}</div>
-  </div>;
-});
-
-const Btn = memo(({ onClick, children, variant = 'primary', size = 'md', disabled = false, style = {} }) => {
+const Btn = React.memo(({ onClick, children, variant = 'primary', size = 'md', disabled = false, style = {} }) => {
   const variants = {
-    primary: { background: '#dc2626', color: '#fff' },
-    success: { background: '#ea580c', color: '#fff' },
-    danger: { background: '#ef4444', color: '#fff' },
-    warning: { background: '#f59e0b', color: '#000' },
-    ghost: { background: '#2d2d2d', color: '#f8fafc' },
-    purple: { background: '#7c3aed', color: '#fff' },
+    primary: { background: '#E63946', color: '#fff' },
+    success: { background: '#4CAF50', color: '#fff' },
+    danger: { background: '#E63946', color: '#fff' },
+    warning: { background: '#FFC107', color: '#000' },
+    ghost: { background: '#333333', color: '#FFFFFF' },
   };
   const sizes = {
     sm: { padding: '5px 12px', fontSize: 11 },
     md: { padding: '8px 18px', fontSize: 13 },
     lg: { padding: '10px 24px', fontSize: 14 }
   };
-  return <button disabled={disabled} onClick={onClick} style={{ ...variants[variant], ...sizes[size], borderRadius: 7, border: 'none', fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, transition: 'all .2s', ...style }}>{children}</button>;
+  return <button 
+    disabled={disabled} 
+    onClick={onClick} 
+    style={{ 
+      ...variants[variant], 
+      ...sizes[size], 
+      borderRadius: 8, 
+      border: 'none', 
+      fontWeight: 600, 
+      cursor: disabled ? 'not-allowed' : 'pointer', 
+      opacity: disabled ? 0.5 : 1, 
+      transition: 'all .2s',
+      ...style 
+    }}
+  >{children}</button>;
 });
 
-const Input = memo(function Input({ label, value, onChange, type = 'text', style = {}, min, max, step, placeholder, note, id }) {
-  const inputId = id || label?.replace(/\s/g, '-') || Math.random().toString(36).slice(2);
+const Input = React.memo(function Input({ label, value, onChange, type = 'text', style = {}, min, max, step, placeholder, note }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {label && <label htmlFor={inputId} style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: .5, textTransform: 'uppercase' }}>{label}</label>}
+      {label && <label style={{ fontSize: 11, fontWeight: 600, color: '#B0B0B0', letterSpacing: .5, textTransform: 'uppercase' }}>{label}</label>}
       <input
-        id={inputId}
         type={type}
         value={value ?? ''}
         onChange={e => onChange(e.target.value)}
@@ -108,45 +117,76 @@ const Input = memo(function Input({ label, value, onChange, type = 'text', style
         step={step}
         placeholder={placeholder}
         autoComplete="off"
-        style={{ padding: '8px 12px', borderRadius: 7, border: '1.5px solid #2d2d2d', fontSize: 13, color: '#f8fafc', background: '#0a0a0a', outline: 'none', transition: 'border .2s', ...style }}
+        style={{ 
+          padding: '8px 12px', 
+          borderRadius: 8, 
+          border: '1.5px solid #333333', 
+          fontSize: 13, 
+          color: '#FFFFFF', 
+          background: '#141414', 
+          outline: 'none', 
+          transition: 'border .2s',
+          width: '100%',
+          ...style 
+        }}
       />
-      {note && <span style={{ fontSize: 10, color: '#64748b' }}>{note}</span>}
+      {note && <span style={{ fontSize: 10, color: '#808080' }}>{note}</span>}
     </div>
   );
 });
 
-const Select = memo(function Select({ label, value, onChange, options, style = {} }) {
+const Select = React.memo(function Select({ label, value, onChange, options, style = {} }) {
   return <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-    {label && <label style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: .5, textTransform: 'uppercase' }}>{label}</label>}
-    <select value={value} onChange={e => onChange(e.target.value)}
-      style={{ padding: '8px 12px', borderRadius: 7, border: '1.5px solid #2d2d2d', fontSize: 13, color: '#f8fafc', background: '#0a0a0a', outline: 'none', transition: 'border .2s', ...style }}>
+    {label && <label style={{ fontSize: 11, fontWeight: 600, color: '#B0B0B0', letterSpacing: .5, textTransform: 'uppercase' }}>{label}</label>}
+    <select 
+      value={value} 
+      onChange={e => onChange(e.target.value)}
+      style={{ 
+        padding: '8px 12px', 
+        borderRadius: 8, 
+        border: '1.5px solid #333333', 
+        fontSize: 13, 
+        color: '#FFFFFF', 
+        background: '#141414', 
+        outline: 'none', 
+        transition: 'border .2s',
+        width: '100%',
+        ...style 
+      }}
+    >
       {options.map(o => <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>)}
     </select>
   </div>;
 });
 
-const CapBar = memo(({ pct, color }) => {
+const CapBar = React.memo(({ pct, color }) => {
   const p = Math.min(100, Math.max(0, pct));
-  const bg = pct > 100 ? '#dc2626' : pct > 80 ? '#f59e0b' : color || '#ea580c';
-  return <div style={{ background: '#2d2d2d', borderRadius: 4, height: 8, marginTop: 4 }}>
+  const bg = pct > 100 ? '#E63946' : pct > 80 ? '#FFC107' : color || '#E63946';
+  return <div style={{ background: '#333333', borderRadius: 4, height: 8, marginTop: 4 }}>
     <div style={{ width: `${p}%`, background: bg, height: 8, borderRadius: 4, transition: 'width .3s' }} />
   </div>;
 });
 
-const KpiCard = memo(({ icon, label, value, color }) => {
-  return <div style={{ background: '#1a1a1a', borderRadius: 12, padding: '18px 16px', border: '1px solid #2d2d2d', boxShadow: '0 2px 8px rgba(0,0,0,.3)' }}>
+const KpiCard = React.memo(({ icon, label, value, color }) => {
+  return <div style={{ 
+    background: '#1E1E1E', 
+    borderRadius: 12, 
+    padding: '18px 16px', 
+    border: '1px solid #333333', 
+    boxShadow: '0 2px 8px rgba(0,0,0,.3)' 
+  }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ fontSize: 24, background: `${color}22`, borderRadius: 10, padding: '8px 10px' }}>{icon}</div>
       <div>
         <div style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginTop: 1 }}>{label}</div>
+        <div style={{ fontSize: 11, color: '#B0B0B0', fontWeight: 600, marginTop: 1 }}>{label}</div>
       </div>
     </div>
   </div>;
 });
 
 // ─── MAIN APP ──────────────────────────────────────────────────────
-export default function App() {
+function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
@@ -166,14 +206,12 @@ export default function App() {
     unit_cost: 0,
     expected_date: '',
     notes: '',
-    });
+  });
   const [bomParent, setBomParent] = useState(FINISHED_GOODS[0]?.id || '');
   const [mpsView, setMpsView] = useState('schedule');
 
-  // ── Demand Forecast (now saved to Supabase) ──────────────────────
   const [demandRows, setDemandRows] = useState([]);
   const [demandForecastLoaded, setDemandForecastLoaded] = useState(false);
-
   const [woFilter, setWoFilter] = useState('All');
 
   // ── Auth ─────────────────────────────────────────────────────────
@@ -217,7 +255,6 @@ export default function App() {
       setPurchaseOrders(poRes.data || []);
       setAuditLogs(auditRes.data || []);
       
-      // ── Load demand forecast ──
       if (demandForecastRes.data) {
         setDemandRowsFromDB(demandForecastRes.data);
       } else {
@@ -234,7 +271,7 @@ export default function App() {
     if (session) fetchData();
   }, [session, fetchData]);
 
-  // ── Demand forecast: convert DB rows to format used by DemandView ──
+  // ── Demand forecast ─────────────────────────────────────────────
   const setDemandRowsFromDB = useCallback((dbData) => {
     const weekStarts = Array.from({ length: HORIZON }, (_, i) => getMonday(addDays(today(), i * 7)));
     const grouped = {};
@@ -263,7 +300,6 @@ export default function App() {
     setDemandForecastLoaded(true);
   }, []);
 
-  // ─── Save a single demand forecast entry ────────────────────────
   const saveDemandForecast = useCallback(async (productId, weekStart, quantity) => {
     const { data: existing } = await supabase
       .from('demand_forecast')
@@ -291,7 +327,6 @@ export default function App() {
     const p = products.find(p => p.id === id);
     return p ? p.name : id;
   };
-  // getProductUnit now prioritises product's own unit field
   const getProductUnit = (id) => {
     const p = products.find(p => p.id === id);
     if (p && p.unit) return p.unit;
@@ -376,7 +411,7 @@ export default function App() {
     else fetchData();
   }, [fetchData]);
 
-  // ─── PRODUCT CRUD (with category and unit, using FG-xxx for finished goods) ──
+  // ─── PRODUCT CRUD ───────────────────────────────────────────────
   const addProduct = useCallback(async (productData) => {
     if (!productData.name.trim()) { notify('Please enter a product name.', 'danger'); return; }
     const existingProducts = products.filter(p => p.israw === productData.isRaw);
@@ -384,11 +419,8 @@ export default function App() {
     if (productData.isRaw) {
       prefix = 'RM';
     } else {
-      // For finished goods, use FG
       prefix = 'FG';
     }
-    // If category is subassembly, we might want SF prefix, but we'll keep it simple: only FG or RM.
-    // To support subassemblies, we can also check category.
     if (!productData.isRaw && productData.category === 'subassembly') {
       prefix = 'SF';
     }
@@ -484,7 +516,6 @@ export default function App() {
   // ─── MPS CRUD ──────────────────────────────────────────────────
   const addMpsEntry = useCallback(async (productId, weekStart, quantity) => {
     if (!productId || !weekStart || quantity <= 0) { notify('Invalid entry.', 'danger'); return; }
-    // Check if existing entry exists for this product+week
     const existing = mpsEntries.find(e => e.product_id === productId && e.week_start === weekStart);
     const payload = { product_id: productId, week_start: weekStart, quantity, shift: 'All' };
     try {
@@ -654,6 +685,28 @@ export default function App() {
     }
   }, [purchaseOrders, products, logAction, fetchData, notify]);
 
+  const updatePO = useCallback(async (id, data) => {
+    try {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update({
+          supplier: data.supplier,
+          unit_cost: data.unit_cost,
+          expected_date: data.expected_date,
+          notes: data.notes,
+        })
+        .eq('id', id);
+      if (error) throw error;
+      await logAction('purchase_orders', id, 'UPDATE', null, data);
+      fetchData();
+      setEditingPOId(null);
+      setEditPOData({ supplier: '', unit_cost: 0, expected_date: '', notes: '' });
+      notify('PO updated.', 'success');
+    } catch (err) {
+      alert('Error updating PO: ' + err.message);
+    }
+  }, [logAction, fetchData, notify]);
+
   // ─── BOM CRUD ──────────────────────────────────────────────────
   const addOrUpdateBOM = useCallback(async (parent, child, qty) => {
     if (!parent || !child || qty <= 0) { notify('Fill all fields.', 'danger'); return; }
@@ -723,24 +776,8 @@ export default function App() {
     }
   }, [mrpData, purchaseOrders, logAction, fetchData, notify]);
 
-  // ─── TABS ──────────────────────────────────────────────────────
-  const TABS = [
-    { id: 'dashboard', label: '📊 Dashboard' },
-    { id: 'products', label: '📦 Products' },
-    { id: 'mps', label: '📅 Master Prod. Schedule' },
-    { id: 'production', label: '🏭 Work Orders' },
-    { id: 'mrp', label: '📋 MRP Explosion' },
-    { id: 'inventory', label: '📦 Inventory' },
-    { id: 'procurement', label: '🛒 Procurement' },
-    { id: 'bom', label: '🧾 BOM' },
-    { id: 'alerts', label: '🚨 Alerts' },
-    { id: 'history', label: '📜 History' },
-  ];
-
-  // ─── ISOLATED FORM COMPONENTS (memoized) ──────────────────────
-
-  // Product Form (with category & unit)
-  const ProductForm = memo(({ onAdd }) => {
+  // ─── FORM COMPONENTS ────────────────────────────────────────────
+  const ProductForm = React.memo(({ onAdd }) => {
     const [local, setLocal] = useState({
       name: '',
       leadTime: 1,
@@ -752,7 +789,6 @@ export default function App() {
       unit: 'g',
     });
 
-    // Auto-set unit based on category when isRaw is true
     const handleCategoryChange = (cat) => {
       const unitMap = {
         ingredient: 'g',
@@ -772,13 +808,13 @@ export default function App() {
     }, [onAdd, local]);
 
     return (
-      <Card title="Add New Product" accent="#dc2626">
+      <Card title="Add New Product">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 14 }}>
-          <Input key="p-name" label="Name" value={local.name} onChange={v => setLocal({...local, name: v})} placeholder="e.g. Ghost Pepper Sauce" />
-          <Input key="p-leadtime" label="Lead Time (days)" type="number" value={local.leadTime} onChange={v => setLocal({...local, leadTime: +v})} min={1} />
-          <Input key="p-lotsize" label="Lot Size" type="number" value={local.lotSize} onChange={v => setLocal({...local, lotSize: +v})} min={1} />
-          <Input key="p-stock" label="Starting Stock" type="number" value={local.currentStock} onChange={v => setLocal({...local, currentStock: +v})} min={0} />
-          <Input key="p-safety" label="Safety Stock" type="number" value={local.safetyStock} onChange={v => setLocal({...local, safetyStock: +v})} min={0} />
+          <Input label="Name" value={local.name} onChange={v => setLocal({...local, name: v})} placeholder="e.g. Ghost Pepper Sauce" />
+          <Input label="Lead Time (days)" type="number" value={local.leadTime} onChange={v => setLocal({...local, leadTime: +v})} min={1} />
+          <Input label="Lot Size" type="number" value={local.lotSize} onChange={v => setLocal({...local, lotSize: +v})} min={1} />
+          <Input label="Starting Stock" type="number" value={local.currentStock} onChange={v => setLocal({...local, currentStock: +v})} min={0} />
+          <Input label="Safety Stock" type="number" value={local.safetyStock} onChange={v => setLocal({...local, safetyStock: +v})} min={0} />
           <Select label="Type" value={local.isRaw ? 'raw' : 'product'} onChange={v => setLocal({...local, isRaw: v === 'raw'})} options={['product', 'raw']} />
           {local.isRaw && (
             <Select
@@ -793,7 +829,7 @@ export default function App() {
             />
           )}
           {local.isRaw && (
-            <Input label="Unit" value={local.unit} onChange={() => {}} style={{ background: '#1a1a1a', cursor: 'default' }} />
+            <Input label="Unit" value={local.unit} onChange={() => {}} style={{ background: '#1E1E1E', cursor: 'default' }} />
           )}
         </div>
         <Btn onClick={handleSubmit}>＋ Add Product</Btn>
@@ -801,8 +837,7 @@ export default function App() {
     );
   });
 
-  // Inventory Form
-  const InventoryForm = memo(({ products, onAdjust }) => {
+  const InventoryForm = React.memo(({ products, onAdjust }) => {
     const [local, setLocal] = useState({
       material: '',
       qty: 0,
@@ -818,7 +853,7 @@ export default function App() {
     }, [onAdjust, local]);
 
     return (
-      <Card title="Inventory Adjustment" accent="#ea580c">
+      <Card title="Inventory Adjustment">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 14 }}>
           <Select label="Material" value={local.material} onChange={v => setLocal({...local, material: v})} options={productOpts} />
           <Select label="Type" value={local.type} onChange={v => setLocal({...local, type: v})} options={['Add','Deduct']} />
@@ -832,8 +867,7 @@ export default function App() {
     );
   });
 
-  // Procurement Form
-  const ProcurementForm = memo(({ products, onCreate }) => {
+  const ProcurementForm = React.memo(({ products, onCreate }) => {
     const [local, setLocal] = useState({
       material: '',
       qty: 0,
@@ -851,7 +885,7 @@ export default function App() {
     }, [onCreate, local]);
 
     return (
-      <Card title="Create Purchase Order" accent="#7c3aed">
+      <Card title="Create Purchase Order">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 14 }}>
           <Select label="Material" value={local.material} onChange={v => setLocal({...local, material: v})} options={productOpts} />
           <Input label={`Qty (${getProductUnit(local.material)})`} type="number" value={local.qty} onChange={v => setLocal({...local, qty: +v})} min={0} step={0.01} />
@@ -865,8 +899,7 @@ export default function App() {
     );
   });
 
-  // Work Order Form
-  const WorkOrderForm = memo(({ products, onCreate }) => {
+  const WorkOrderForm = React.memo(({ products, onCreate }) => {
     const [local, setLocal] = useState({
       productId: products.length > 0 ? products.find(p => FINISHED_GOODS.some(fg => fg.id === p.id))?.id || '' : '',
       qty: 100,
@@ -883,7 +916,7 @@ export default function App() {
     }, [onCreate, local]);
 
     return (
-      <Card title="Create Work Order" accent="#dc2626">
+      <Card title="Create Work Order">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 14 }}>
           <Select label="Product" value={local.productId} onChange={v => setLocal({...local, productId: v})} options={productOpts} />
           <Input label="Qty (bottles)" type="number" value={local.qty} onChange={v => setLocal({...local, qty: +v})} min={1} />
@@ -896,8 +929,7 @@ export default function App() {
     );
   });
 
-  // MPS Form
-  const MpsForm = memo(({ products, weekStarts, onAdd }) => {
+  const MpsForm = React.memo(({ products, weekStarts, onAdd }) => {
     const [local, setLocal] = useState({
       productId: products.length > 0 ? products.find(p => FINISHED_GOODS.some(fg => fg.id === p.id))?.id || '' : '',
       week: weekStarts.length > 0 ? weekStarts[0] : '',
@@ -921,8 +953,7 @@ export default function App() {
     );
   });
 
-  // BOM Form (used in BOM tab)
-  const BomForm = memo(({ products, parent, onSave }) => {
+  const BomForm = React.memo(({ products, parent, onSave }) => {
     const [local, setLocal] = useState({
       child: '',
       qty: 0,
@@ -944,8 +975,8 @@ export default function App() {
     }, [parent, local, onSave]);
 
     return (
-      <div style={{ background: '#2d2d2d', borderRadius: 8, padding: 16, border: '1px solid #4b5563' }}>
-        <p style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 10 }}>✏️ Add / Update Component</p>
+      <div style={{ background: '#333333', borderRadius: 8, padding: 16, border: '1px solid #555555' }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: '#FFC107', marginBottom: 10 }}>✏️ Add / Update Component</p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <Select
             label="Component"
@@ -967,9 +998,7 @@ export default function App() {
     );
   });
 
-  // ─── RENDER FUNCTIONS ─────────────────────────────────────────
-
-  // ── DASHBOARD ──────────────────────────────────────────────────
+  // ─── DASHBOARD ──────────────────────────────────────────────────
   function Dashboard() {
     const active = workOrders.filter(o => o.status === 'In Progress').length;
     const pending = workOrders.filter(o => o.status === 'Pending').length;
@@ -980,13 +1009,13 @@ export default function App() {
     const mpsCups = mpsEntries.reduce((s, e) => s + e.quantity, 0);
 
     const kpis = [
-      { icon: '🏭', label: 'Active WOs', value: active, color: '#ea580c' },
-      { icon: '⏳', label: 'Pending WOs', value: pending, color: '#f59e0b' },
-      { icon: '✅', label: 'Completed', value: done, color: '#22c55e' },
-      { icon: '📦', label: 'Open POs', value: openPO, color: '#dc2626' },
-      { icon: '🚨', label: 'Critical Mat.', value: critMat, color: '#dc2626' },
-      { icon: '📅', label: 'MPS Planned', value: fmt(mpsCups), color: '#f97316' },
-      { icon: '🌶️', label: 'WO Planned', value: fmt(totalCups), color: '#ea580c' },
+      { icon: '🏭', label: 'Active WOs', value: active, color: '#E63946' },
+      { icon: '⏳', label: 'Pending WOs', value: pending, color: '#FFC107' },
+      { icon: '✅', label: 'Completed', value: done, color: '#4CAF50' },
+      { icon: '📦', label: 'Open POs', value: openPO, color: '#E63946' },
+      { icon: '🚨', label: 'Critical Mat.', value: critMat, color: '#E63946' },
+      { icon: '📅', label: 'MPS Planned', value: fmt(mpsCups), color: '#E63946' },
+      { icon: '🌶️', label: 'WO Planned', value: fmt(totalCups), color: '#E63946' },
     ];
 
     const flavorBreakdown = FINISHED_GOODS.map(fg => ({
@@ -994,148 +1023,155 @@ export default function App() {
       qty: workOrders.filter(wo => wo.product_id === fg.id && wo.status !== 'Cancelled').reduce((s, o) => s + o.quantity, 0)
     })).filter(f => f.qty > 0).sort((a, b) => b.qty - a.qty);
 
-    return <div style={{ display: 'grid', gap: 24 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-        {kpis.map(k => <KpiCard key={k.label} icon={k.icon} label={k.label} value={k.value} color={k.color} />)}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <Card title="Top Planned Products (WOs)" accent="#ea580c">
-          {flavorBreakdown.length === 0 ? <p style={{ color: '#64748b', fontSize: 13 }}>No active work orders.</p> :
-            flavorBreakdown.map(f => {
-              const max = flavorBreakdown[0].qty || 1;
-              return <div key={f.id} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ fontWeight: 600, color: '#f8fafc' }}>{f.name}</span>
-                  <span style={{ color: '#94a3b8' }}>{fmt(f.qty)} bottles</span>
-                </div>
-                <div style={{ background: '#2d2d2d', borderRadius: 4, height: 6 }}>
-                  <div style={{ width: `${(f.qty / max) * 100}%`, background: '#ea580c', height: 6, borderRadius: 4 }} />
-                </div>
-              </div>;
-            })
-          }
-        </Card>
-        <Card title="Material Alert Status" accent="#dc2626">
-          {alerts.lowStock.length === 0 ? <p style={{ color: '#22c55e', fontWeight: 600, fontSize: 13 }}>✅ All materials above reorder points.</p> :
-            alerts.lowStock.map(p => {
-              const rop = getProductReorderPoint(p.id);
-              return <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #2d2d2d' }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#f8fafc' }}>{p.name}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{p.currentstock} {getProductUnit(p.id)} | ROP: {rop}</div>
-                </div>
-                <Badge type={p.currentstock <= p.safetystock ? 'danger' : 'warning'}>
-                  {p.currentstock <= p.safetystock ? 'CRITICAL' : 'LOW'}
-                </Badge>
-              </div>;
-            })
-          }
-        </Card>
-      </div>
-      <Card title="Recent Activity" accent="#7c3aed">
-        {auditLogs.length === 0 ? <p style={{ color: '#64748b' }}>No activity yet.</p> :
-          auditLogs.map(h => <div key={h.id} style={{ display: 'flex', gap: 14, padding: '8px 0', borderBottom: '1px solid #2d2d2d', alignItems: 'flex-start' }}>
-            <div style={{ fontSize: 10, color: '#64748b', minWidth: 140, paddingTop: 1 }}>{new Date(h.changed_at).toLocaleString()}</div>
-            <div><span style={{ fontWeight: 600, fontSize: 12, color: '#f8fafc' }}>{h.action}</span><span style={{ fontSize: 12, color: '#94a3b8' }}> — {h.record_id}</span></div>
-          </div>)
-        }
-      </Card>
-    </div>;
+    return (
+      <Container>
+        <div style={{ display: 'grid', gap: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+            {kpis.map(k => <KpiCard key={k.label} icon={k.icon} label={k.label} value={k.value} color={k.color} />)}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Card title="Top Planned Products (WOs)">
+              {flavorBreakdown.length === 0 ? <p style={{ color: '#808080', fontSize: 13 }}>No active work orders.</p> :
+                flavorBreakdown.map(f => {
+                  const max = flavorBreakdown[0].qty || 1;
+                  return <div key={f.id} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{f.name}</span>
+                      <span style={{ color: '#B0B0B0' }}>{fmt(f.qty)} bottles</span>
+                    </div>
+                    <div style={{ background: '#333333', borderRadius: 4, height: 6 }}>
+                      <div style={{ width: `${(f.qty / max) * 100}%`, background: '#E63946', height: 6, borderRadius: 4 }} />
+                    </div>
+                  </div>;
+                })
+              }
+            </Card>
+            <Card title="Material Alert Status">
+              {alerts.lowStock.length === 0 ? <p style={{ color: '#4CAF50', fontWeight: 600, fontSize: 13 }}>✅ All materials above reorder points.</p> :
+                alerts.lowStock.map(p => {
+                  const rop = getProductReorderPoint(p.id);
+                  return <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #333333' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#FFFFFF' }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: '#B0B0B0' }}>{p.currentstock} {getProductUnit(p.id)} | ROP: {rop}</div>
+                    </div>
+                    <Badge type={p.currentstock <= p.safetystock ? 'danger' : 'warning'}>
+                      {p.currentstock <= p.safetystock ? 'CRITICAL' : 'LOW'}
+                    </Badge>
+                  </div>;
+                })
+              }
+            </Card>
+          </div>
+          <Card title="Recent Activity">
+            {auditLogs.length === 0 ? <p style={{ color: '#808080' }}>No activity yet.</p> :
+              auditLogs.slice(0, 10).map(h => <div key={h.id} style={{ display: 'flex', gap: 14, padding: '8px 0', borderBottom: '1px solid #333333', alignItems: 'flex-start' }}>
+                <div style={{ fontSize: 10, color: '#808080', minWidth: 140, paddingTop: 1 }}>{new Date(h.changed_at).toLocaleString()}</div>
+                <div><span style={{ fontWeight: 600, fontSize: 12, color: '#FFFFFF' }}>{h.action}</span><span style={{ fontSize: 12, color: '#B0B0B0' }}> — {h.record_id}</span></div>
+              </div>)
+            }
+          </Card>
+        </div>
+      </Container>
+    );
   }
 
-  // ── PRODUCTS TAB (with category & unit) ──────────────────────
+  // ─── PRODUCTS TAB ──────────────────────────────────────────────
   function ProductsTab() {
     return (
-      <div style={{ display: 'grid', gap: 20 }}>
-        <ProductForm onAdd={addProduct} />
-        <Card title="All Products" accent="#ea580c">
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#f8fafc' }}>
-              <thead><tr style={{ background: '#2d2d2d' }}>
-                <th style={{ padding: '10px 12px' }}>ID</th>
-                <th style={{ padding: '10px 12px' }}>Name</th>
-                <th style={{ padding: '10px 12px' }}>Type</th>
-                <th style={{ padding: '10px 12px' }}>Category</th>
-                <th style={{ padding: '10px 12px' }}>Unit</th>
-                <th style={{ padding: '10px 12px' }}>Lead Time</th>
-                <th style={{ padding: '10px 12px' }}>Lot Size</th>
-                <th style={{ padding: '10px 12px' }}>Stock</th>
-                <th style={{ padding: '10px 12px' }}>Safety</th>
-                <th style={{ padding: '10px 12px' }}>Action</th>
-              </tr></thead>
-              <tbody>
-                {products.map(p => {
-                  const isEditing = editingProductId === p.id;
-                  return <tr key={p.id} style={{ borderBottom: '1px solid #2d2d2d' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 700, color: '#dc2626' }}>{p.id}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {isEditing ? <input value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} style={{ background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4 }} /> : p.name}
+      <Container>
+        <div style={{ display: 'grid', gap: 20 }}>
+          <ProductForm onAdd={addProduct} />
+          <Card title="All Products">
+            <ResponsiveTable
+              headers={[
+                { key: 'id', label: 'ID' },
+                { key: 'name', label: 'Name' },
+                { key: 'type', label: 'Type' },
+                { key: 'category', label: 'Category' },
+                { key: 'unit', label: 'Unit' },
+                { key: 'leadtime', label: 'Lead Time' },
+                { key: 'lotsize', label: 'Lot Size' },
+                { key: 'currentstock', label: 'Stock' },
+                { key: 'safetystock', label: 'Safety' },
+                { key: 'actions', label: 'Action' },
+              ]}
+              data={products}
+              renderRow={(item) => {
+                const isEditing = editingProductId === item.id;
+                return (
+                  <>
+                    <td data-label="ID" style={{ fontWeight: 700, color: '#E63946' }}>{item.id}</td>
+                    <td data-label="Name">
+                      {isEditing ? <input value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} style={{ background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4 }} /> : item.name}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td data-label="Type">
                       {isEditing ? (
-                        <select value={editFormData.israw ? 'raw' : 'product'} onChange={e => setEditFormData({...editFormData, israw: e.target.value === 'raw'})} style={{ background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4 }}>
+                        <select value={editFormData.israw ? 'raw' : 'product'} onChange={e => setEditFormData({...editFormData, israw: e.target.value === 'raw'})} style={{ background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4 }}>
                           <option value="product">Product</option>
                           <option value="raw">Raw</option>
                         </select>
                       ) : (
-                        <Badge type={p.israw ? 'warning' : 'info'}>{p.israw ? 'Raw' : 'Product'}</Badge>
+                        <Badge type={item.israw ? 'warning' : 'info'}>{item.israw ? 'Raw' : 'Product'}</Badge>
                       )}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td data-label="Category">
                       {isEditing ? (
                         <select value={editFormData.category || 'ingredient'} onChange={e => {
                           const cat = e.target.value;
                           const unitMap = { ingredient: 'g', packaging: 'pcs', subassembly: 'kg' };
                           setEditFormData({...editFormData, category: cat, unit: unitMap[cat] || 'g'});
-                        }} style={{ background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4 }}>
+                        }} style={{ background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4 }}>
                           <option value="ingredient">Ingredient</option>
                           <option value="packaging">Packaging</option>
                           <option value="subassembly">Sub‑assembly</option>
                           <option value="finished">Finished</option>
                         </select>
                       ) : (
-                        <span style={{ color: '#94a3b8' }}>{p.category || '—'}</span>
+                        <span style={{ color: '#B0B0B0' }}>{item.category || '—'}</span>
                       )}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {isEditing ? <input value={editFormData.unit || ''} onChange={e => setEditFormData({...editFormData, unit: e.target.value})} style={{ background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4, width: 50 }} /> : p.unit}
+                    <td data-label="Unit">
+                      {isEditing ? <input value={editFormData.unit || ''} onChange={e => setEditFormData({...editFormData, unit: e.target.value})} style={{ background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4, width: 50 }} /> : item.unit}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {isEditing ? <input type="number" value={editFormData.leadtime || 0} onChange={e => setEditFormData({...editFormData, leadtime: +e.target.value})} style={{ width: 60, background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4 }} /> : p.leadtime}
+                    <td data-label="Lead Time">
+                      {isEditing ? <input type="number" value={editFormData.leadtime || 0} onChange={e => setEditFormData({...editFormData, leadtime: +e.target.value})} style={{ width: 60, background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4 }} /> : item.leadtime}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {isEditing ? <input type="number" value={editFormData.lotsize || 0} onChange={e => setEditFormData({...editFormData, lotsize: +e.target.value})} style={{ width: 60, background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4 }} /> : p.lotsize}
+                    <td data-label="Lot Size">
+                      {isEditing ? <input type="number" value={editFormData.lotsize || 0} onChange={e => setEditFormData({...editFormData, lotsize: +e.target.value})} style={{ width: 60, background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4 }} /> : item.lotsize}
                     </td>
-                    <td style={{ padding: '10px 12px', fontWeight: 700, color: p.currentstock <= p.safetystock ? '#dc2626' : '#f8fafc' }}>
-                      {isEditing ? <input type="number" value={editFormData.currentstock || 0} onChange={e => setEditFormData({...editFormData, currentstock: +e.target.value})} style={{ width: 80, background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4 }} /> : p.currentstock}
+                    <td data-label="Stock" style={{ fontWeight: 700, color: item.currentstock <= item.safetystock ? '#E63946' : '#FFFFFF' }}>
+                      {isEditing ? <input type="number" value={editFormData.currentstock || 0} onChange={e => setEditFormData({...editFormData, currentstock: +e.target.value})} style={{ width: 80, background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4 }} /> : item.currentstock}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {isEditing ? <input type="number" value={editFormData.safetystock || 0} onChange={e => setEditFormData({...editFormData, safetystock: +e.target.value})} style={{ width: 60, background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4 }} /> : p.safetystock}
+                    <td data-label="Safety">
+                      {isEditing ? <input type="number" value={editFormData.safetystock || 0} onChange={e => setEditFormData({...editFormData, safetystock: +e.target.value})} style={{ width: 60, background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4 }} /> : item.safetystock}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td data-label="Action">
                       {isEditing ? (
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <Btn size="sm" variant="success" onClick={() => saveEditProduct(p.id)}>Save</Btn>
+                          <Btn size="sm" variant="success" onClick={() => saveEditProduct(item.id)}>Save</Btn>
                           <Btn size="sm" variant="ghost" onClick={cancelEditProduct}>Cancel</Btn>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <Btn size="sm" variant="primary" onClick={() => startEditProduct(p)}>Edit</Btn>
-                          <Btn size="sm" variant="danger" onClick={() => deleteProduct(p.id)}>Delete</Btn>
+                          <Btn size="sm" variant="primary" onClick={() => startEditProduct(item)}>Edit</Btn>
+                          <Btn size="sm" variant="danger" onClick={() => deleteProduct(item.id)}>Delete</Btn>
                         </div>
                       )}
                     </td>
-                  </tr>;
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
+                  </>
+                );
+              }}
+              sortable
+              searchable
+            />
+          </Card>
+        </div>
+      </Container>
     );
   }
 
-  // ── MPS TAB ────────────────────────────────────────────────────
+  // ─── MPS TAB ────────────────────────────────────────────────────
   function MPSTab() {
     const weekStarts = useMemo(() => {
       return Array.from({ length: HORIZON }, (_, i) => getMonday(addDays(today(), i * 7)));
@@ -1161,52 +1197,52 @@ export default function App() {
     function ScheduleView() {
       return (
         <div style={{ display: 'grid', gap: 20 }}>
-          <Card title="Add / Update MPS Entry" accent="#f97316">
+          <Card title="Add / Update MPS Entry">
             <MpsForm products={products} weekStarts={weekStarts} onAdd={addMpsEntry} />
             <div style={{ marginTop: 12 }}>
               <Btn onClick={pushMpsToWorkOrders} variant="success">🚀 Push All MPS → Work Orders</Btn>
             </div>
           </Card>
-          <Card title="MPS – 6-Week Plan" accent="#ea580c">
+          <Card title="MPS – 6-Week Plan">
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#f8fafc' }}>
-                <thead><tr style={{ background: '#2d2d2d' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#FFFFFF' }}>
+                <thead><tr style={{ background: '#333333' }}>
                   <th style={{ padding: '10px 12px', textAlign: 'left' }}>Product</th>
                   {weekStarts.map(w => <th key={w} style={{ padding: '10px 8px', textAlign: 'center' }}>
-                    {fmtDate(w)}<br/><span style={{ fontWeight: 400, fontSize: 10, color: '#94a3b8' }}>Cap: {fmt(WEEKLY_CAPACITY)}</span>
+                    {fmtDate(w)}<br/><span style={{ fontWeight: 400, fontSize: 10, color: '#B0B0B0' }}>Cap: {fmt(WEEKLY_CAPACITY)}</span>
                   </th>)}
                   <th style={{ padding: '10px 12px', textAlign: 'center' }}>Total</th>
                   <th></th>
                 </tr></thead>
                 <tbody>
-                  {mpsEntries.length === 0 ? <tr><td colSpan={weekStarts.length+2} style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>No MPS entries yet.</td></tr> :
+                  {mpsEntries.length === 0 ? <tr><td colSpan={weekStarts.length+2} style={{ padding: 30, textAlign: 'center', color: '#808080' }}>No MPS entries yet.</td></tr> :
                     mpsEntries.map(e => {
                       const total = weekStarts.reduce((s, w) => s + (e.week_start === w ? e.quantity : 0), 0);
-                      return <tr key={e.id} style={{ borderBottom: '1px solid #2d2d2d' }}>
-                        <td style={{ padding: '10px 12px', fontWeight: 600, color: '#f8fafc' }}>{getProductName(e.product_id)}</td>
+                      return <tr key={e.id} style={{ borderBottom: '1px solid #333333' }}>
+                        <td style={{ padding: '10px 12px', fontWeight: 600, color: '#FFFFFF' }}>{getProductName(e.product_id)}</td>
                         {weekStarts.map(w => {
                           const val = e.week_start === w ? e.quantity : 0;
-                          return <td key={w} style={{ padding: '10px 8px', textAlign: 'center', fontWeight: val > 0 ? 700 : 400, color: val > 0 ? '#f8fafc' : '#4b5563' }}>
+                          return <td key={w} style={{ padding: '10px 8px', textAlign: 'center', fontWeight: val > 0 ? 700 : 400, color: val > 0 ? '#FFFFFF' : '#808080' }}>
                             {val > 0 ? fmt(val) : '—'}
                           </td>;
                         })}
-                        <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#ea580c' }}>{fmt(total)}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#E63946' }}>{fmt(total)}</td>
                         <td style={{ padding: '10px 8px' }}><Btn size="sm" variant="danger" onClick={() => deleteMpsEntry(e.id)}>✕</Btn></td>
                       </tr>;
                     })
                   }
-                  <tr style={{ background: '#2d2d2d', fontWeight: 700 }}>
-                    <td style={{ padding: '10px 12px', color: '#f8fafc' }}>Total Planned</td>
+                  <tr style={{ background: '#333333', fontWeight: 700 }}>
+                    <td style={{ padding: '10px 12px', color: '#FFFFFF' }}>Total Planned</td>
                     {weekStarts.map(w => {
                       const t = weekTotals[w] || 0;
                       const pct = (t / WEEKLY_CAPACITY) * 100;
-                      return <td key={w} style={{ padding: '10px 8px', textAlign: 'center', color: pct > 100 ? '#dc2626' : pct > 80 ? '#f59e0b' : '#ea580c' }}>
+                      return <td key={w} style={{ padding: '10px 8px', textAlign: 'center', color: pct > 100 ? '#E63946' : pct > 80 ? '#FFC107' : '#E63946' }}>
                         <div>{fmt(t)}</div>
-                        <CapBar pct={pct} color="#ea580c" />
-                        <div style={{ fontSize: 9, marginTop: 2, color: '#94a3b8' }}>{pct.toFixed(0)}%</div>
+                        <CapBar pct={pct} color="#E63946" />
+                        <div style={{ fontSize: 9, marginTop: 2, color: '#B0B0B0' }}>{pct.toFixed(0)}%</div>
                       </td>;
                     })}
-                    <td style={{ padding: '10px 12px', textAlign: 'center', color: '#f8fafc' }}>{fmt(Object.values(weekTotals).reduce((s, v) => s + v, 0))}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', color: '#FFFFFF' }}>{fmt(Object.values(weekTotals).reduce((s, v) => s + v, 0))}</td>
                     <td></td>
                   </tr>
                 </tbody>
@@ -1219,29 +1255,28 @@ export default function App() {
 
     function CapacityView() {
       return (
-        <Card title="Capacity Utilization — 6-Week View" accent="#7c3aed"
-          subtitle={`Plant max: ${fmt(WEEKLY_CAPACITY)} bottles/week (${fmt(DAILY_CAPACITY)} bottles/day × 6 days)`}>
+        <Card title="Capacity Utilization — 6-Week View" subtitle={`Plant max: ${fmt(WEEKLY_CAPACITY)} bottles/week (${fmt(DAILY_CAPACITY)} bottles/day × 6 days)`}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
             {weekStarts.map((w, i) => {
               const planned = weekTotals[w] || 0;
               const pct = (planned / WEEKLY_CAPACITY) * 100;
               const avail = Math.max(0, WEEKLY_CAPACITY - planned);
-              const color = pct > 100 ? '#dc2626' : pct > 85 ? '#f59e0b' : pct > 60 ? '#ea580c' : '#22c55e';
-              return <div key={w} style={{ background: '#1a1a1a', borderRadius: 12, padding: 16, border: `2px solid ${color}44`, boxShadow: '0 2px 8px rgba(0,0,0,.3)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 2 }}>WEEK {i+1}</div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 10 }}>{fmtDate(w)} – {fmtDate(addDays(w,5))}</div>
+              const color = pct > 100 ? '#E63946' : pct > 85 ? '#FFC107' : pct > 60 ? '#E63946' : '#4CAF50';
+              return <div key={w} style={{ background: '#1E1E1E', borderRadius: 12, padding: 16, border: `2px solid ${color}44`, boxShadow: '0 2px 8px rgba(0,0,0,.3)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#B0B0B0', marginBottom: 2 }}>WEEK {i+1}</div>
+                <div style={{ fontSize: 12, color: '#B0B0B0', marginBottom: 10 }}>{fmtDate(w)} – {fmtDate(addDays(w,5))}</div>
                 <div style={{ fontSize: 24, fontWeight: 800, color }}>{pct.toFixed(0)}%</div>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>Utilized</div>
-                <div style={{ background: '#2d2d2d', borderRadius: 6, height: 10, marginTop: 8, marginBottom: 8, overflow: 'hidden' }}>
+                <div style={{ fontSize: 11, color: '#B0B0B0' }}>Utilized</div>
+                <div style={{ background: '#333333', borderRadius: 6, height: 10, marginTop: 8, marginBottom: 8, overflow: 'hidden' }}>
                   <div style={{ width: `${Math.min(100, pct)}%`, background: color, height: 10, borderRadius: 6, transition: 'width .4s' }} />
                 </div>
                 <div style={{ fontSize: 11, display: 'grid', gap: 3 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#94a3b8' }}>Planned</span><span style={{ fontWeight: 700, color }}>{fmt(planned)}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#94a3b8' }}>Available</span><span style={{ fontWeight: 600, color: '#22c55e' }}>{fmt(avail)}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#94a3b8' }}>Capacity</span><span style={{ fontWeight: 600 }}>{fmt(WEEKLY_CAPACITY)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#B0B0B0' }}>Planned</span><span style={{ fontWeight: 700, color }}>{fmt(planned)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#B0B0B0' }}>Available</span><span style={{ fontWeight: 600, color: '#4CAF50' }}>{fmt(avail)}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#B0B0B0' }}>Capacity</span><span style={{ fontWeight: 600 }}>{fmt(WEEKLY_CAPACITY)}</span></div>
                 </div>
-                {pct > 100 && <div style={{ marginTop: 8, background: '#3b0a0a', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 700, color: '#dc2626', textAlign: 'center' }}>⚠ OVER CAPACITY</div>}
-                {pct > 85 && pct <= 100 && <div style={{ marginTop: 8, background: '#3b2a0a', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 700, color: '#f59e0b', textAlign: 'center' }}>⚡ Near full capacity</div>}
+                {pct > 100 && <div style={{ marginTop: 8, background: '#3b0a0a', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 700, color: '#E63946', textAlign: 'center' }}>⚠ OVER CAPACITY</div>}
+                {pct > 85 && pct <= 100 && <div style={{ marginTop: 8, background: '#3b2a0a', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 700, color: '#FFC107', textAlign: 'center' }}>⚡ Near full capacity</div>}
               </div>;
             })}
           </div>
@@ -1276,52 +1311,51 @@ export default function App() {
       weekStarts.forEach(w => gapTotals[w] = (weekTotals[w] || 0) - (demandTotals[w] || 0));
 
       if (!demandForecastLoaded) {
-        return <div style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Loading demand forecast...</div>;
+        return <div style={{ textAlign: 'center', padding: 40, color: '#808080' }}>Loading demand forecast...</div>;
       }
 
       return (
-        <Card title="📈 Demand Forecast vs MPS Planned" accent="#22c55e"
-          subtitle="Enter forecasted demand per flavor/week – saved automatically to the cloud">
+        <Card title="📈 Demand Forecast vs MPS Planned" subtitle="Enter forecasted demand per flavor/week – saved automatically to the cloud">
           <div style={{ overflowX: 'auto', marginBottom: 20 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#f8fafc' }}>
-              <thead><tr style={{ background: '#2d2d2d' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#FFFFFF' }}>
+              <thead><tr style={{ background: '#333333' }}>
                 <th style={{ padding: '10px 12px', textAlign: 'left', minWidth: 130 }}>Flavor</th>
                 {weekStarts.map((w, i) => <th key={w} style={{ padding: '10px 8px', textAlign: 'center', minWidth: 100 }}>
-                  Wk {i+1}<br/><span style={{ fontWeight: 400, fontSize: 10, color: '#94a3b8' }}>{fmtDate(w)}</span>
+                  Wk {i+1}<br/><span style={{ fontWeight: 400, fontSize: 10, color: '#B0B0B0' }}>{fmtDate(w)}</span>
                 </th>)}
                 <th style={{ padding: '10px 12px', textAlign: 'center' }}>Total</th>
               </tr></thead>
               <tbody>
                 {demandRows.map(row => {
                   const total = weekStarts.reduce((s, w) => s + (+(row.weeks[w] || 0)), 0);
-                  return <tr key={row.productId} style={{ borderBottom: '1px solid #2d2d2d' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#f8fafc' }}>{getProductName(row.productId)}</td>
+                  return <tr key={row.productId} style={{ borderBottom: '1px solid #333333' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#FFFFFF' }}>{getProductName(row.productId)}</td>
                     {weekStarts.map(w => {
                       const val = +(row.weeks[w] || 0);
                       return <td key={w} style={{ padding: '4px 6px' }}>
                         <input type="number" min={0} value={val} placeholder="0"
                           onChange={e => updateDemand(row.productId, w, e.target.value)}
-                          style={{ width: '100%', padding: '5px 7px', borderRadius: 5, border: '1.5px solid #2d2d2d', fontSize: 12, textAlign: 'right', background: '#0a0a0a', color: '#f8fafc' }} />
+                          style={{ width: '100%', padding: '5px 7px', borderRadius: 5, border: '1.5px solid #333333', fontSize: 12, textAlign: 'right', background: '#141414', color: '#FFFFFF' }} />
                       </td>;
                     })}
-                    <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#22c55e' }}>{fmt(total)}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: '#4CAF50' }}>{fmt(total)}</td>
                   </tr>;
                 })}
-                <tr style={{ background: '#2d2d2d', fontWeight: 700 }}>
-                  <td style={{ padding: '10px 12px', color: '#22c55e' }}>Total Demand</td>
-                  {weekStarts.map(w => <td key={w} style={{ padding: '10px 8px', textAlign: 'right', color: '#22c55e' }}>{fmt(demandTotals[w] || 0)}</td>)}
-                  <td style={{ padding: '10px 12px', textAlign: 'center', color: '#22c55e' }}>{fmt(Object.values(demandTotals).reduce((s, v) => s + v, 0))}</td>
+                <tr style={{ background: '#333333', fontWeight: 700 }}>
+                  <td style={{ padding: '10px 12px', color: '#4CAF50' }}>Total Demand</td>
+                  {weekStarts.map(w => <td key={w} style={{ padding: '10px 8px', textAlign: 'right', color: '#4CAF50' }}>{fmt(demandTotals[w] || 0)}</td>)}
+                  <td style={{ padding: '10px 12px', textAlign: 'center', color: '#4CAF50' }}>{fmt(Object.values(demandTotals).reduce((s, v) => s + v, 0))}</td>
                 </tr>
-                <tr style={{ background: '#2d2d2d', fontWeight: 700 }}>
-                  <td style={{ padding: '10px 12px', color: '#ea580c' }}>MPS Planned</td>
-                  {weekStarts.map(w => <td key={w} style={{ padding: '10px 8px', textAlign: 'right', color: '#ea580c' }}>{fmt(weekTotals[w] || 0)}</td>)}
-                  <td style={{ padding: '10px 12px', textAlign: 'center', color: '#ea580c' }}>{fmt(Object.values(weekTotals).reduce((s, v) => s + v, 0))}</td>
+                <tr style={{ background: '#333333', fontWeight: 700 }}>
+                  <td style={{ padding: '10px 12px', color: '#E63946' }}>MPS Planned</td>
+                  {weekStarts.map(w => <td key={w} style={{ padding: '10px 8px', textAlign: 'right', color: '#E63946' }}>{fmt(weekTotals[w] || 0)}</td>)}
+                  <td style={{ padding: '10px 12px', textAlign: 'center', color: '#E63946' }}>{fmt(Object.values(weekTotals).reduce((s, v) => s + v, 0))}</td>
                 </tr>
                 <tr style={{ background: '#3b2a0a', fontWeight: 700 }}>
-                  <td style={{ padding: '10px 12px', color: '#f59e0b' }}>Gap (MPS − Demand)</td>
+                  <td style={{ padding: '10px 12px', color: '#FFC107' }}>Gap (MPS − Demand)</td>
                   {weekStarts.map(w => {
                     const gap = gapTotals[w] || 0;
-                    const color = gap < 0 ? '#dc2626' : gap > 0 ? '#22c55e' : '#94a3b8';
+                    const color = gap < 0 ? '#E63946' : gap > 0 ? '#4CAF50' : '#B0B0B0';
                     return <td key={w} style={{ padding: '10px 8px', textAlign: 'right', color, fontWeight: 700 }}>
                       {gap === 0 ? '✓' : gap > 0 ? `+${fmt(gap)}` : fmt(gap)}
                     </td>;
@@ -1329,7 +1363,7 @@ export default function App() {
                   <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                     {(() => {
                       const totalGap = Object.values(gapTotals).reduce((s, v) => s + v, 0);
-                      return <span style={{ color: totalGap < 0 ? '#dc2626' : totalGap > 0 ? '#22c55e' : '#94a3b8' }}>
+                      return <span style={{ color: totalGap < 0 ? '#E63946' : totalGap > 0 ? '#4CAF50' : '#B0B0B0' }}>
                         {totalGap > 0 ? '+' : ''}{fmt(totalGap)}
                       </span>;
                     })()}
@@ -1340,11 +1374,11 @@ export default function App() {
           </div>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 12 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 12, height: 12, background: '#dc2626', borderRadius: 2, display: 'inline-block' }}/> 
+              <span style={{ width: 12, height: 12, background: '#E63946', borderRadius: 2, display: 'inline-block' }}/> 
               Negative gap = demand exceeds MPS (shortage risk)
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 12, height: 12, background: '#22c55e', borderRadius: 2, display: 'inline-block' }}/> 
+              <span style={{ width: 12, height: 12, background: '#4CAF50', borderRadius: 2, display: 'inline-block' }}/> 
               Positive gap = MPS exceeds demand (buffer stock)
             </span>
           </div>
@@ -1353,269 +1387,265 @@ export default function App() {
     }
 
     return (
-      <div style={{ display: 'grid', gap: 16 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #2d2d2d', paddingBottom: 8 }}>
-          {subTabs.map(st => (
-            <button key={st.id} onClick={() => setMpsView(st.id)}
-              style={{ padding: '6px 16px', borderRadius: 20, border: '1.5px solid #2d2d2d', background: mpsView === st.id ? '#dc2626' : 'transparent', color: mpsView === st.id ? '#fff' : '#94a3b8', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .2s' }}>
-              {st.label}
-            </button>
-          ))}
+      <Container>
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #333333', paddingBottom: 8 }}>
+            {subTabs.map(st => (
+              <button key={st.id} onClick={() => setMpsView(st.id)}
+                style={{ padding: '6px 16px', borderRadius: 20, border: '1.5px solid #333333', background: mpsView === st.id ? '#E63946' : 'transparent', color: mpsView === st.id ? '#FFFFFF' : '#B0B0B0', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .2s' }}>
+                {st.label}
+              </button>
+            ))}
+          </div>
+          {mpsView === 'schedule' && <ScheduleView />}
+          {mpsView === 'capacity' && <CapacityView />}
+          {mpsView === 'demand' && <DemandView />}
         </div>
-        {mpsView === 'schedule' && <ScheduleView />}
-        {mpsView === 'capacity' && <CapacityView />}
-        {mpsView === 'demand' && <DemandView />}
-      </div>
+      </Container>
     );
   }
 
-  // ── WORK ORDERS TAB ────────────────────────────────────────────
+  // ─── WORK ORDERS TAB ────────────────────────────────────────────
   function WorkOrdersTab() {
     const filtered = woFilter === 'All' ? workOrders : workOrders.filter(o => o.status === woFilter);
 
     return (
-      <div style={{ display: 'grid', gap: 20 }}>
-        <WorkOrderForm products={products} onCreate={createWorkOrder} />
-        <Card title="Work Orders" accent="#ea580c">
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-            {['All','Pending','In Progress','Completed','Cancelled'].map(s => (
-              <button key={s} onClick={() => setWoFilter(s)} style={{ padding: '5px 14px', borderRadius: 20, border: '1.5px solid #2d2d2d', background: woFilter === s ? '#dc2626' : 'transparent', color: woFilter === s ? '#fff' : '#94a3b8', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .2s' }}>
-                {s} ({s==='All' ? workOrders.length : workOrders.filter(o => o.status === s).length})
-              </button>
-            ))}
-          </div>
-          {filtered.length === 0 ? <p style={{ color: '#64748b' }}>No orders found.</p> :
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#f8fafc' }}>
-              <thead><tr style={{ background: '#2d2d2d' }}>
-                <th style={{ padding: '10px 12px' }}>ID</th><th>Product</th><th>Qty</th><th>Sched Date</th><th>Shift</th><th>Priority</th><th>From MPS</th><th>Status</th><th>Action</th>
-              </tr></thead>
-              <tbody>
-                {filtered.map(o => (
-                  <tr key={o.id} style={{ borderBottom: '1px solid #2d2d2d' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 700, color: '#dc2626' }}>{o.id}</td>
-                    <td>{getProductName(o.product_id)}</td>
-                    <td>{fmt(o.quantity)}</td>
-                    <td>{o.scheduled_date}</td>
-                    <td>{o.shift}</td>
-                    <td><Badge type={o.priority === 'Urgent' ? 'danger' : o.priority === 'High' ? 'warning' : 'neutral'}>{o.priority}</Badge></td>
-                    <td>{o.from_mps ? <Badge type="info">MPS</Badge> : '—'}</td>
-                    <td><Badge type={o.status === 'Completed' ? 'success' : o.status === 'Pending' ? 'warning' : o.status === 'In Progress' ? 'info' : 'danger'}>{o.status}</Badge></td>
-                    <td>
-                      {o.status === 'Pending' && <Btn size="sm" variant="primary" onClick={() => updateWorkOrderStatus(o.id, 'In Progress')}>Start</Btn>}
-                      {o.status === 'In Progress' && <Btn size="sm" variant="success" onClick={() => updateWorkOrderStatus(o.id, 'Completed')}>Done</Btn>}
-                      {o.status !== 'Completed' && o.status !== 'Cancelled' && <Btn size="sm" variant="danger" onClick={() => updateWorkOrderStatus(o.id, 'Cancelled')}>Cancel</Btn>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>}
-        </Card>
-      </div>
+      <Container>
+        <div style={{ display: 'grid', gap: 20 }}>
+          <WorkOrderForm products={products} onCreate={createWorkOrder} />
+          <Card title="Work Orders">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+              {['All','Pending','In Progress','Completed','Cancelled'].map(s => (
+                <button key={s} onClick={() => setWoFilter(s)} style={{ padding: '5px 14px', borderRadius: 20, border: '1.5px solid #333333', background: woFilter === s ? '#E63946' : 'transparent', color: woFilter === s ? '#FFFFFF' : '#B0B0B0', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .2s' }}>
+                  {s} ({s==='All' ? workOrders.length : workOrders.filter(o => o.status === s).length})
+                </button>
+              ))}
+            </div>
+            {filtered.length === 0 ? <p style={{ color: '#808080' }}>No orders found.</p> :
+            <ResponsiveTable
+              headers={[
+                { key: 'id', label: 'ID' },
+                { key: 'product', label: 'Product' },
+                { key: 'quantity', label: 'Qty' },
+                { key: 'scheduled_date', label: 'Sched Date' },
+                { key: 'shift', label: 'Shift' },
+                { key: 'priority', label: 'Priority' },
+                { key: 'from_mps', label: 'From MPS' },
+                { key: 'status', label: 'Status' },
+                { key: 'actions', label: 'Action' },
+              ]}
+              data={filtered}
+              renderRow={(o) => (
+                <>
+                  <td data-label="ID" style={{ fontWeight: 700, color: '#E63946' }}>{o.id}</td>
+                  <td data-label="Product">{getProductName(o.product_id)}</td>
+                  <td data-label="Qty">{fmt(o.quantity)}</td>
+                  <td data-label="Sched Date">{o.scheduled_date}</td>
+                  <td data-label="Shift">{o.shift}</td>
+                  <td data-label="Priority"><Badge type={o.priority === 'Urgent' ? 'danger' : o.priority === 'High' ? 'warning' : 'neutral'}>{o.priority}</Badge></td>
+                  <td data-label="From MPS">{o.from_mps ? <Badge type="info">MPS</Badge> : '—'}</td>
+                  <td data-label="Status"><Badge type={o.status === 'Completed' ? 'success' : o.status === 'Pending' ? 'warning' : o.status === 'In Progress' ? 'info' : 'danger'}>{o.status}</Badge></td>
+                  <td data-label="Action">
+                    {o.status === 'Pending' && <Btn size="sm" variant="primary" onClick={() => updateWorkOrderStatus(o.id, 'In Progress')}>Start</Btn>}
+                    {o.status === 'In Progress' && <Btn size="sm" variant="success" onClick={() => updateWorkOrderStatus(o.id, 'Completed')}>Done</Btn>}
+                    {o.status !== 'Completed' && o.status !== 'Cancelled' && <Btn size="sm" variant="danger" onClick={() => updateWorkOrderStatus(o.id, 'Cancelled')}>Cancel</Btn>}
+                  </td>
+                </>
+              )}
+              sortable
+              searchable
+            />}
+          </Card>
+        </div>
+      </Container>
     );
   }
 
-  // ── MRP TAB ──────────────────────────────────────────────────────
+  // ─── MRP TAB ──────────────────────────────────────────────────────
   function MRPTab() {
     const [filter, setFilter] = useState('All');
     const displayed = filter === 'All' ? mrpData : mrpData.filter(m => m.status === filter);
 
     return (
-      <div style={{ display: 'grid', gap: 20 }}>
-        <Card title="MRP Explosion – Net Requirements" accent="#f97316">
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
-            {['All','OK','Low','Critical'].map(s => (
-              <button key={s} onClick={() => setFilter(s)} style={{ padding: '5px 14px', borderRadius: 20, border: '1.5px solid #2d2d2d', background: filter === s ? '#dc2626' : 'transparent', color: filter === s ? '#fff' : '#94a3b8', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .2s' }}>
-                {s} ({s==='All' ? mrpData.length : mrpData.filter(m => m.status === s).length})
-              </button>
-            ))}
-            <Btn onClick={autoCreatePOs} variant="success" style={{ marginLeft: 'auto' }}>⚡ Auto-Create POs</Btn>
-          </div>
-          {displayed.length === 0 ? <p style={{ color: '#64748b' }}>No requirements.</p> :
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#f8fafc' }}>
-              <thead><tr style={{ background: '#2d2d2d' }}>
-                <th style={{ padding: '10px 12px' }}>Material</th><th>Unit</th><th>Gross Req.</th><th>On Hand</th><th>Safety Stock</th><th>Net Req.</th><th>Lead Time</th><th>Status</th>
-              </tr></thead>
-              <tbody>
-                {displayed.map(m => (
-                  <tr key={m.material} style={{ borderBottom: '1px solid #2d2d2d', background: m.status === 'Critical' ? '#3b0a0a' : m.status === 'Low' ? '#3b2a0a' : 'transparent' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 600 }}>{m.name}</td>
-                    <td>{m.unit}</td>
-                    <td>{fmtNum(m.gross)}</td>
-                    <td style={{ fontWeight: 700, color: m.onHand >= m.gross ? '#ea580c' : '#dc2626' }}>{fmtNum(m.onHand)}</td>
-                    <td>{fmtNum(m.safetyStock)}</td>
-                    <td style={{ fontWeight: 700, color: m.net > 0 ? '#dc2626' : '#ea580c' }}>{m.net > 0 ? fmtNum(m.net) : '—'}</td>
-                    <td>{m.leadTime}d</td>
-                    <td><Badge type={m.status === 'OK' ? 'success' : m.status === 'Low' ? 'warning' : 'danger'}>{m.status}</Badge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>}
-        </Card>
-      </div>
+      <Container>
+        <div style={{ display: 'grid', gap: 20 }}>
+          <Card title="MRP Explosion – Net Requirements">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
+              {['All','OK','Low','Critical'].map(s => (
+                <button key={s} onClick={() => setFilter(s)} style={{ padding: '5px 14px', borderRadius: 20, border: '1.5px solid #333333', background: filter === s ? '#E63946' : 'transparent', color: filter === s ? '#FFFFFF' : '#B0B0B0', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .2s' }}>
+                  {s} ({s==='All' ? mrpData.length : mrpData.filter(m => m.status === s).length})
+                </button>
+              ))}
+              <Btn onClick={autoCreatePOs} variant="success" style={{ marginLeft: 'auto' }}>⚡ Auto-Create POs</Btn>
+            </div>
+            {displayed.length === 0 ? <p style={{ color: '#808080' }}>No requirements.</p> :
+            <ResponsiveTable
+              headers={[
+                { key: 'material', label: 'Material' },
+                { key: 'unit', label: 'Unit' },
+                { key: 'gross', label: 'Gross Req.' },
+                { key: 'onHand', label: 'On Hand' },
+                { key: 'safetyStock', label: 'Safety Stock' },
+                { key: 'net', label: 'Net Req.' },
+                { key: 'leadTime', label: 'Lead Time' },
+                { key: 'status', label: 'Status' },
+              ]}
+              data={displayed}
+              renderRow={(m) => (
+                <>
+                  <td data-label="Material" style={{ fontWeight: 600 }}>{m.name}</td>
+                  <td data-label="Unit">{m.unit}</td>
+                  <td data-label="Gross Req.">{fmtNum(m.gross)}</td>
+                  <td data-label="On Hand" style={{ fontWeight: 700, color: m.onHand >= m.gross ? '#E63946' : '#E63946' }}>{fmtNum(m.onHand)}</td>
+                  <td data-label="Safety Stock">{fmtNum(m.safetyStock)}</td>
+                  <td data-label="Net Req." style={{ fontWeight: 700, color: m.net > 0 ? '#E63946' : '#E63946' }}>{m.net > 0 ? fmtNum(m.net) : '—'}</td>
+                  <td data-label="Lead Time">{m.leadTime}d</td>
+                  <td data-label="Status"><Badge type={m.status === 'OK' ? 'success' : m.status === 'Low' ? 'warning' : 'danger'}>{m.status}</Badge></td>
+                </>
+              )}
+              sortable
+            />}
+          </Card>
+        </div>
+      </Container>
     );
   }
 
-  // ── INVENTORY TAB ─────────────────────────────────────────────
+  // ─── INVENTORY TAB ─────────────────────────────────────────────
   function InventoryTab() {
     return (
-      <div style={{ display: 'grid', gap: 20 }}>
-        <InventoryForm products={products} onAdjust={adjustInventory} />
-        <Card title="Inventory Ledger" accent="#dc2626">
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#f8fafc' }}>
-              <thead><tr style={{ background: '#2d2d2d' }}>
-                <th style={{ padding: '10px 12px' }}>ID</th><th>Name</th><th>Unit</th><th>On Hand</th><th>Safety Stock</th><th>Reorder Point</th><th>Status</th>
-              </tr></thead>
-              <tbody>
-                {products.map(p => {
-                  const rop = getProductReorderPoint(p.id);
-                  const status = p.currentstock <= p.safetystock ? 'Critical' : p.currentstock <= rop ? 'Low' : 'OK';
-                  const unit = getProductUnit(p.id);
-                  return <tr key={p.id} style={{ borderBottom: '1px solid #2d2d2d', background: status === 'Critical' ? '#3b0a0a' : status === 'Low' ? '#3b2a0a' : 'transparent' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 600 }}>{p.id}</td>
-                    <td>{p.name}</td>
-                    <td>{unit}</td>
-                    <td style={{ fontWeight: 700, color: status === 'Critical' ? '#dc2626' : status === 'Low' ? '#f59e0b' : '#ea580c' }}>{p.currentstock}</td>
-                    <td>{p.safetystock}</td>
-                    <td>{rop}</td>
-                    <td><Badge type={status === 'OK' ? 'success' : status === 'Low' ? 'warning' : 'danger'}>{status}</Badge></td>
-                  </tr>;
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
+      <Container>
+        <div style={{ display: 'grid', gap: 20 }}>
+          <InventoryForm products={products} onAdjust={adjustInventory} />
+          <Card title="Inventory Ledger">
+            <ResponsiveTable
+              headers={[
+                { key: 'id', label: 'ID' },
+                { key: 'name', label: 'Name' },
+                { key: 'unit', label: 'Unit' },
+                { key: 'currentstock', label: 'On Hand' },
+                { key: 'safetystock', label: 'Safety Stock' },
+                { key: 'reorder_point', label: 'Reorder Point' },
+                { key: 'status', label: 'Status' },
+              ]}
+              data={products}
+              renderRow={(p) => {
+                const rop = getProductReorderPoint(p.id);
+                const status = p.currentstock <= p.safetystock ? 'Critical' : p.currentstock <= rop ? 'Low' : 'OK';
+                return (
+                  <>
+                    <td data-label="ID" style={{ fontWeight: 600 }}>{p.id}</td>
+                    <td data-label="Name">{p.name}</td>
+                    <td data-label="Unit">{getProductUnit(p.id)}</td>
+                    <td data-label="On Hand" style={{ fontWeight: 700, color: status === 'Critical' ? '#E63946' : status === 'Low' ? '#FFC107' : '#E63946' }}>{p.currentstock}</td>
+                    <td data-label="Safety Stock">{p.safetystock}</td>
+                    <td data-label="Reorder Point">{rop}</td>
+                    <td data-label="Status"><Badge type={status === 'OK' ? 'success' : status === 'Low' ? 'warning' : 'danger'}>{status}</Badge></td>
+                  </>
+                );
+              }}
+              sortable
+              searchable
+            />
+          </Card>
+        </div>
+      </Container>
     );
   }
 
-  // ── PROCUREMENT TAB ───────────────────────────────────────────
-  // ── PROCUREMENT TAB (with inline editing) ────────────────────────
-function ProcurementTab() {
-  const totalVal = purchaseOrders.filter(p => p.status === 'Open').reduce((s, p) => s + p.quantity * (p.unit_cost || 0), 0);
+  // ─── PROCUREMENT TAB ───────────────────────────────────────────
+  function ProcurementTab() {
+    const totalVal = purchaseOrders.filter(p => p.status === 'Open').reduce((s, p) => s + p.quantity * (p.unit_cost || 0), 0);
 
-  // ── Local edit state ────────────────────────────────────────────
-  const [editingPOId, setEditingPOId] = useState(null);
-  const [editPOData, setEditPOData] = useState({
-    supplier: '',
-    unit_cost: 0,
-    expected_date: '',
-    notes: '',
-  });
+    const startEditPO = (po) => {
+      setEditingPOId(po.id);
+      setEditPOData({
+        supplier: po.supplier || '',
+        unit_cost: po.unit_cost || 0,
+        expected_date: po.expected_date || '',
+        notes: po.notes || '',
+      });
+    };
 
-  const startEditPO = (po) => {
-    setEditingPOId(po.id);
-    setEditPOData({
-      supplier: po.supplier || '',
-      unit_cost: po.unit_cost || 0,
-      expected_date: po.expected_date || '',
-      notes: po.notes || '',
-    });
-  };
-
-  const cancelEditPO = () => {
-    setEditingPOId(null);
-    setEditPOData({ supplier: '', unit_cost: 0, expected_date: '', notes: '' });
-  };
-
-  const saveEditPO = async (id) => {
-    try {
-      const { error } = await supabase
-        .from('purchase_orders')
-        .update({
-          supplier: editPOData.supplier,
-          unit_cost: editPOData.unit_cost,
-          expected_date: editPOData.expected_date,
-          notes: editPOData.notes,
-        })
-        .eq('id', id);
-      if (error) throw error;
-      await logAction('purchase_orders', id, 'UPDATE', null, editPOData);
-      fetchData();
+    const cancelEditPO = () => {
       setEditingPOId(null);
       setEditPOData({ supplier: '', unit_cost: 0, expected_date: '', notes: '' });
-      notify('PO updated.', 'success');
-    } catch (err) {
-      alert('Error updating PO: ' + err.message);
-    }
-  };
+    };
 
-  return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      <ProcurementForm products={products} onCreate={createPO} />
-      <Card title={`Purchase Orders  |  Open PO Value: ₱${totalVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} accent="#ea580c">
-        {purchaseOrders.length === 0 ? (
-          <p style={{ color: '#64748b' }}>No POs yet.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#f8fafc' }}>
-              <thead>
-                <tr style={{ background: '#2d2d2d' }}>
-                  <th style={{ padding: '10px 10px', textAlign: 'left', fontWeight: 700, color: '#94a3b8' }}>PO ID</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'left', fontWeight: 700, color: '#94a3b8' }}>Material</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#94a3b8' }}>Qty</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'left', fontWeight: 700, color: '#94a3b8' }}>Unit</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'left', fontWeight: 700, color: '#94a3b8' }}>Supplier</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'left', fontWeight: 700, color: '#94a3b8' }}>Expected</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#94a3b8' }}>Value (₱)</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'left', fontWeight: 700, color: '#94a3b8' }}>Status</th>
-                  <th style={{ padding: '10px 10px', textAlign: 'center', fontWeight: 700, color: '#94a3b8' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...purchaseOrders].reverse().map(p => {
+    const saveEditPO = async (id) => {
+      await updatePO(id, editPOData);
+    };
+
+    return (
+      <Container>
+        <div style={{ display: 'grid', gap: 20 }}>
+          <ProcurementForm products={products} onCreate={createPO} />
+          <Card title={`Purchase Orders  |  Open PO Value: ₱${totalVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}>
+            {purchaseOrders.length === 0 ? (
+              <p style={{ color: '#808080' }}>No POs yet.</p>
+            ) : (
+              <ResponsiveTable
+                headers={[
+                  { key: 'id', label: 'PO ID' },
+                  { key: 'material', label: 'Material' },
+                  { key: 'quantity', label: 'Qty' },
+                  { key: 'unit', label: 'Unit' },
+                  { key: 'supplier', label: 'Supplier' },
+                  { key: 'expected_date', label: 'Expected' },
+                  { key: 'value', label: 'Value (₱)' },
+                  { key: 'status', label: 'Status' },
+                  { key: 'actions', label: 'Actions' },
+                ]}
+                data={[...purchaseOrders].reverse()}
+                renderRow={(p) => {
                   const isEditing = editingPOId === p.id;
                   return (
-                    <tr key={p.id} style={{ borderBottom: '1px solid #2d2d2d' }}>
-                      <td style={{ padding: '10px 10px', fontWeight: 700, color: '#dc2626' }}>{p.id}</td>
-                      <td style={{ padding: '10px 10px', fontWeight: 600 }}>{getProductName(p.material_id)}</td>
-                      <td style={{ padding: '10px 10px', textAlign: 'right' }}>{p.quantity}</td>
-                      <td style={{ padding: '10px 10px', color: '#94a3b8' }}>{getProductUnit(p.material_id)}</td>
-                      <td style={{ padding: '10px 10px' }}>
+                    <>
+                      <td data-label="PO ID" style={{ fontWeight: 700, color: '#E63946' }}>{p.id}</td>
+                      <td data-label="Material" style={{ fontWeight: 600 }}>{getProductName(p.material_id)}</td>
+                      <td data-label="Qty" style={{ textAlign: 'right' }}>{p.quantity}</td>
+                      <td data-label="Unit" style={{ color: '#B0B0B0' }}>{getProductUnit(p.material_id)}</td>
+                      <td data-label="Supplier">
                         {isEditing ? (
                           <input
                             value={editPOData.supplier}
                             onChange={e => setEditPOData({...editPOData, supplier: e.target.value})}
-                            style={{ background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4, width: '100%' }}
+                            style={{ background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4, width: '100%' }}
                             placeholder="Supplier"
                           />
                         ) : (
                           p.supplier
                         )}
                       </td>
-                      <td style={{ padding: '10px 10px' }}>
+                      <td data-label="Expected">
                         {isEditing ? (
                           <input
                             type="date"
                             value={editPOData.expected_date}
                             onChange={e => setEditPOData({...editPOData, expected_date: e.target.value})}
-                            style={{ background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4, width: '100%' }}
+                            style={{ background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4, width: '100%' }}
                           />
                         ) : (
                           p.expected_date
                         )}
                       </td>
-                      <td style={{ padding: '10px 10px', textAlign: 'right' }}>
+                      <td data-label="Value (₱)" style={{ textAlign: 'right' }}>
                         {isEditing ? (
                           <input
                             type="number"
                             step="0.01"
                             value={editPOData.unit_cost}
                             onChange={e => setEditPOData({...editPOData, unit_cost: +e.target.value})}
-                            style={{ background: '#0a0a0a', border: '1px solid #2d2d2d', color: '#f8fafc', padding: '4px 8px', borderRadius: 4, width: 80, textAlign: 'right' }}
+                            style={{ background: '#141414', border: '1px solid #333333', color: '#FFFFFF', padding: '4px 8px', borderRadius: 4, width: 80, textAlign: 'right' }}
                           />
                         ) : (
                           `₱${(p.quantity * (p.unit_cost || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                         )}
                       </td>
-                      <td style={{ padding: '10px 10px' }}>
+                      <td data-label="Status">
                         <Badge type={p.status === 'Received' ? 'success' : 'info'}>{p.status}</Badge>
                       </td>
-                      <td style={{ padding: '10px 10px', textAlign: 'center' }}>
+                      <td data-label="Actions" style={{ textAlign: 'center' }}>
                         {isEditing ? (
                           <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                             <Btn size="sm" variant="success" onClick={() => saveEditPO(p.id)}>Save</Btn>
@@ -1630,493 +1660,591 @@ function ProcurementTab() {
                           </div>
                         )}
                       </td>
-                    </tr>
+                    </>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-}
-  // ── BOM TAB (with Enroll Mode) ────────────────────────────────
-  function BOMTab() {
-    const [mode, setMode] = useState('edit');
-    const [editingRow, setEditingRow] = useState(null);
-    const [editData, setEditData] = useState({ componentid: '', quantity: '' });
-    const [search, setSearch] = useState('');
-    const [newMaterial, setNewMaterial] = useState({ componentid: '', qty: 0 });
+                }}
+                sortable
+                searchable
+              />
+            )}
+          </Card>
+        </div>
+      </Container>
+    );
+  }
 
-    // Enroll state
-    const [newRecipe, setNewRecipe] = useState({ name: '', category: 'Standard', description: '' });
-    const [ingredients, setIngredients] = useState([]);
-    const [ingredientInput, setIngredientInput] = useState({ componentid: '', qty: 0 });
+  // ─── BOM TAB ──────────────────────────────────────────────────
+function BOMTab() {
+  const [mode, setMode] = useState('edit');
+  const [editingRow, setEditingRow] = useState(null);
+  const [editData, setEditData] = useState({ componentid: '', quantity: '' });
+  const [search, setSearch] = useState('');
+  const [newMaterial, setNewMaterial] = useState({ componentid: '', qty: 0 });
 
-    if (products.length === 0) {
-      return (
-        <Card title="BOM Viewer & Editor" accent="#f59e0b">
-          <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Loading products...</div>
+  const [newRecipe, setNewRecipe] = useState({ name: '', category: 'Standard', description: '' });
+  const [ingredients, setIngredients] = useState([]);
+  const [ingredientInput, setIngredientInput] = useState({ componentid: '', qty: 0 });
+
+  if (products.length === 0) {
+    return (
+      <Container>
+        <Card title="BOM Viewer & Editor">
+          <div style={{ textAlign: 'center', padding: 40, color: '#B0B0B0' }}>Loading products...</div>
         </Card>
-      );
+      </Container>
+    );
+  }
+
+  const validFinishedGoods = FINISHED_GOODS.filter(f => products.some(p => p.id === f.id));
+
+  useEffect(() => {
+    if (!bomParent && validFinishedGoods.length > 0) {
+      setBomParent(validFinishedGoods[0].id);
+    }
+  }, [bomParent, validFinishedGoods]);
+
+  const children = bom.filter(b => b.parentid === bomParent);
+
+  const filteredGoods = validFinishedGoods.filter(f =>
+    f.name.toLowerCase().includes(search.toLowerCase()) ||
+    f.id.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const startEditRow = (child) => {
+    setEditingRow(child.componentid);
+    setEditData({ componentid: child.componentid, quantity: child.quantity });
+  };
+  const cancelEditRow = () => {
+    setEditingRow(null);
+    setEditData({ componentid: '', quantity: '' });
+  };
+  const saveEditRow = async (parentId, oldComponentId) => {
+    const newComponentId = editData.componentid;
+    const newQty = editData.quantity;
+    if (!newComponentId || newQty <= 0) {
+      alert('Please select a component and enter a valid quantity.');
+      return;
+    }
+    if (oldComponentId !== newComponentId) {
+      await deleteBOM(parentId, oldComponentId);
+      await addOrUpdateBOM(parentId, newComponentId, newQty);
+    } else {
+      await addOrUpdateBOM(parentId, newComponentId, newQty);
+    }
+    setEditingRow(null);
+    setEditData({ componentid: '', quantity: '' });
+  };
+
+  const handleAddMaterial = () => {
+    if (!newMaterial.componentid || newMaterial.qty <= 0) {
+      alert('Please select a component and enter a valid quantity.');
+      return;
+    }
+    addOrUpdateBOM(bomParent, newMaterial.componentid, newMaterial.qty);
+    setNewMaterial({ componentid: '', qty: 0 });
+  };
+
+  const handleAddIngredient = () => {
+    if (!ingredientInput.componentid || ingredientInput.qty <= 0) {
+      alert('Please select a component and enter a valid quantity.');
+      return;
+    }
+    if (ingredients.some(r => r.componentid === ingredientInput.componentid)) {
+      alert('Ingredient already added. Edit the quantity in the table.');
+      return;
+    }
+    const comp = products.find(p => p.id === ingredientInput.componentid);
+    setIngredients([
+      ...ingredients,
+      {
+        componentid: ingredientInput.componentid,
+        name: comp ? comp.name : ingredientInput.componentid,
+        unit: getProductUnit(ingredientInput.componentid),
+        qty: ingredientInput.qty,
+      },
+    ]);
+    setIngredientInput({ componentid: '', qty: 0 });
+  };
+
+  const removeIngredient = (componentid) => {
+    setIngredients(ingredients.filter(r => r.componentid !== componentid));
+  };
+
+  const updateIngredientQty = (componentid, qty) => {
+    setIngredients(ingredients.map(r =>
+      r.componentid === componentid ? { ...r, qty: +qty } : r
+    ));
+  };
+
+  const handleEnroll = async () => {
+    if (!newRecipe.name.trim()) {
+      alert('Please enter a recipe name.');
+      return;
+    }
+    if (ingredients.length === 0) {
+      alert('Please add at least one ingredient.');
+      return;
     }
 
-    const validFinishedGoods = FINISHED_GOODS.filter(f => products.some(p => p.id === f.id));
+    const existingProducts = products.filter(p => !p.israw);
+    const nextNum = existingProducts.length + 1;
+    const fgId = `FG-${String(nextNum).padStart(3, '0')}`;
 
-    useEffect(() => {
-      if (!bomParent && validFinishedGoods.length > 0) {
-        setBomParent(validFinishedGoods[0].id);
-      }
-    }, [bomParent, validFinishedGoods]);
-
-    const children = bom.filter(b => b.parentid === bomParent);
-    const getMaterialCount = (productId) => bom.filter(b => b.parentid === productId).length;
-
-    const filteredGoods = validFinishedGoods.filter(f =>
-      f.name.toLowerCase().includes(search.toLowerCase()) ||
-      f.id.toLowerCase().includes(search.toLowerCase())
-    );
-
-    // Edit row handlers
-    const startEditRow = (child) => {
-      setEditingRow(child.componentid);
-      setEditData({ componentid: child.componentid, quantity: child.quantity });
-    };
-    const cancelEditRow = () => {
-      setEditingRow(null);
-      setEditData({ componentid: '', quantity: '' });
-    };
-    const saveEditRow = async (parentId, oldComponentId) => {
-      const newComponentId = editData.componentid;
-      const newQty = editData.quantity;
-      if (!newComponentId || newQty <= 0) {
-        alert('Please select a component and enter a valid quantity.');
-        return;
-      }
-      if (oldComponentId !== newComponentId) {
-        await deleteBOM(parentId, oldComponentId);
-        await addOrUpdateBOM(parentId, newComponentId, newQty);
-      } else {
-        await addOrUpdateBOM(parentId, newComponentId, newQty);
-      }
-      setEditingRow(null);
-      setEditData({ componentid: '', quantity: '' });
+    const dbProduct = {
+      id: fgId,
+      name: newRecipe.name.trim(),
+      leadtime: 1,
+      lotsize: 1,
+      currentstock: 0,
+      safetystock: 0,
+      israw: false,
+      category: 'finished',
+      unit: 'unit',
     };
 
-    // Add material to existing BOM
-    const handleAddMaterial = () => {
-      if (!newMaterial.componentid || newMaterial.qty <= 0) {
-        alert('Please select a component and enter a valid quantity.');
-        return;
-      }
-      addOrUpdateBOM(bomParent, newMaterial.componentid, newMaterial.qty);
-      setNewMaterial({ componentid: '', qty: 0 });
-    };
+    try {
+      const { error: pErr } = await supabase.from('products').insert([dbProduct]);
+      if (pErr) throw pErr;
+      await logAction('products', fgId, 'INSERT', null, dbProduct);
 
-    // Enroll new recipe
-    const handleAddIngredient = () => {
-      if (!ingredientInput.componentid || ingredientInput.qty <= 0) {
-        alert('Please select a component and enter a valid quantity.');
-        return;
-      }
-      if (ingredients.some(r => r.componentid === ingredientInput.componentid)) {
-        alert('Ingredient already added. Edit the quantity in the table.');
-        return;
-      }
-      const comp = products.find(p => p.id === ingredientInput.componentid);
-      setIngredients([
-        ...ingredients,
-        {
-          componentid: ingredientInput.componentid,
-          name: comp ? comp.name : ingredientInput.componentid,
-          unit: getProductUnit(ingredientInput.componentid),
-          qty: ingredientInput.qty,
-        },
-      ]);
-      setIngredientInput({ componentid: '', qty: 0 });
-    };
-
-    const removeIngredient = (componentid) => {
-      setIngredients(ingredients.filter(r => r.componentid !== componentid));
-    };
-
-    const updateIngredientQty = (componentid, qty) => {
-      setIngredients(ingredients.map(r =>
-        r.componentid === componentid ? { ...r, qty: +qty } : r
-      ));
-    };
-
-    const handleEnroll = async () => {
-      if (!newRecipe.name.trim()) {
-        alert('Please enter a recipe name.');
-        return;
-      }
-      if (ingredients.length === 0) {
-        alert('Please add at least one ingredient.');
-        return;
+      const bomRows = ingredients.map(r => ({
+        parentid: fgId,
+        componentid: r.componentid,
+        quantity: r.qty,
+      }));
+      const { error: bErr } = await supabase.from('bom').insert(bomRows);
+      if (bErr) throw bErr;
+      for (const row of bomRows) {
+        await logAction('bom', `${fgId}|${row.componentid}`, 'INSERT', null, row);
       }
 
-      const existingProducts = products.filter(p => !p.israw);
-      const nextNum = existingProducts.length + 1;
-      const fgId = `FG-${String(nextNum).padStart(3, '0')}`;
+      fetchData();
+      notify(`✅ "${newRecipe.name.trim()}" enrolled as ${fgId}!`, 'success');
 
-      const dbProduct = {
-        id: fgId,
-        name: newRecipe.name.trim(),
-        leadtime: 1,
-        lotsize: 1,
-        currentstock: 0,
-        safetystock: 0,
-        israw: false,
-        category: 'finished',
-        unit: 'unit',
-      };
+      setNewRecipe({ name: '', category: 'Standard', description: '' });
+      setIngredients([]);
+      setMode('edit');
+      setBomParent(fgId);
+    } catch (err) {
+      alert('Error enrolling recipe: ' + err.message);
+    }
+  };
 
-      try {
-        const { error: pErr } = await supabase.from('products').insert([dbProduct]);
-        if (pErr) throw pErr;
-        await logAction('products', fgId, 'INSERT', null, dbProduct);
+  // Helper function to format numbers with 2 decimal places if not whole
+  const formatQuantity = (value) => {
+    if (value === undefined || value === null) return '0';
+    const num = typeof value === 'number' ? value : parseFloat(value);
+    if (isNaN(num)) return '0';
+    // Check if it's a whole number
+    if (Number.isInteger(num) && num >= 0) {
+      return num.toString();
+    }
+    // Show 2 decimal places for non-whole numbers
+    return num.toFixed(2);
+  };
 
-        const bomRows = ingredients.map(r => ({
-          parentid: fgId,
-          componentid: r.componentid,
-          quantity: r.qty,
-        }));
-        const { error: bErr } = await supabase.from('bom').insert(bomRows);
-        if (bErr) throw bErr;
-        for (const row of bomRows) {
-          await logAction('bom', `${fgId}|${row.componentid}`, 'INSERT', null, row);
-        }
+  const renderModeSwitcher = () => (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+      <button
+        onClick={() => setMode('edit')}
+        style={{
+          padding: '8px 18px',
+          borderRadius: 20,
+          border: '2px solid',
+          borderColor: mode === 'edit' ? '#FFC107' : '#333333',
+          background: mode === 'edit' ? '#FFC107' : 'transparent',
+          color: mode === 'edit' ? '#000' : '#B0B0B0',
+          fontSize: 13,
+          fontWeight: 700,
+          cursor: 'pointer',
+          transition: 'all .2s',
+        }}
+      >
+        📋 Edit Existing Recipe
+      </button>
+      <button
+        onClick={() => setMode('enroll')}
+        style={{
+          padding: '8px 18px',
+          borderRadius: 20,
+          border: '2px solid',
+          borderColor: mode === 'enroll' ? '#4CAF50' : '#333333',
+          background: mode === 'enroll' ? '#4CAF50' : 'transparent',
+          color: mode === 'enroll' ? '#000' : '#B0B0B0',
+          fontSize: 13,
+          fontWeight: 700,
+          cursor: 'pointer',
+          transition: 'all .2s',
+        }}
+      >
+        ➕ Enroll New Recipe
+      </button>
+      <div style={{ marginLeft: 'auto', fontSize: 12, color: '#808080', fontStyle: 'italic' }}>
+        {validFinishedGoods.length} recipe{validFinishedGoods.length !== 1 ? 's' : ''} registered
+      </div>
+    </div>
+  );
 
-        fetchData();
-        notify(`✅ "${newRecipe.name.trim()}" enrolled as ${fgId}!`, 'success');
+  const renderEditMode = () => (
+    <>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '1fr 1fr', 
+        gap: 12, 
+        marginBottom: 16,
+        alignItems: 'flex-end'
+      }}>
+        <Select
+          label="Finished Good / Recipe"
+          value={bomParent}
+          onChange={v => setBomParent(v)}
+          options={validFinishedGoods.map(f => ({ value: f.id, label: `${f.id} – ${f.name}` }))}
+          style={{ minWidth: '100%' }}
+        />
+        <Input
+          label="Search"
+          value={search}
+          onChange={v => setSearch(v)}
+          placeholder="Filter products..."
+          style={{ width: '100%' }}
+        />
+      </div>
 
-        setNewRecipe({ name: '', category: 'Standard', description: '' });
-        setIngredients([]);
-        setMode('edit');
-        setBomParent(fgId);
-      } catch (err) {
-        alert('Error enrolling recipe: ' + err.message);
-      }
-    };
+      <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+        <table style={{ 
+          width: '100%', 
+          borderCollapse: 'collapse', 
+          fontSize: 13, 
+          color: '#FFFFFF',
+          minWidth: '500px'
+        }}>
+          <thead>
+            <tr style={{ background: '#333333' }}>
+              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: '#B0B0B0', width: '40%' }}>Material</th>
+              <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: '#B0B0B0', width: '20%' }}>Qty per unit</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: '#B0B0B0', width: '15%' }}>Unit</th>
+              <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#B0B0B0', width: '25%' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {children.length === 0 ? (
+              <tr>
+                <td colSpan={4} style={{ padding: 30, textAlign: 'center', color: '#808080' }}>No BOM entries.</td>
+              </tr>
+            ) : (
+              children.map(c => {
+                const isEditing = editingRow === c.componentid;
+                return (
+                  <tr key={c.componentid} style={{ borderBottom: '1px solid #333333' }}>
+                    {isEditing ? (
+                      <>
+                        <td style={{ padding: '8px 12px' }}>
+                          <Select
+                            value={editData.componentid}
+                            onChange={v => setEditData({...editData, componentid: v})}
+                            options={products.map(p => ({ value: p.id, label: `${p.id} - ${p.name}` }))}
+                          />
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                          <Input
+                            type="number"
+                            value={editData.quantity}
+                            onChange={v => setEditData({...editData, quantity: +v})}
+                            min={0}
+                            step={0.001}
+                            style={{ width: '80px', textAlign: 'right' }}
+                          />
+                        </td>
+                        <td style={{ padding: '8px 12px', color: '#B0B0B0' }}>
+                          {getProductUnit(c.componentid)}
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                            <Btn size="sm" variant="success" onClick={() => saveEditRow(c.parentid, c.componentid)}>Save</Btn>
+                            <Btn size="sm" variant="ghost" onClick={cancelEditRow}>Cancel</Btn>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ padding: '8px 12px', fontWeight: 600 }}>{getProductName(c.componentid)}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                          {formatQuantity(c.quantity)}
+                        </td>
+                        <td style={{ padding: '8px 12px', color: '#B0B0B0' }}>{getProductUnit(c.componentid)}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                            <Btn size="sm" variant="primary" onClick={() => startEditRow(c)}>Edit</Btn>
+                            <Btn size="sm" variant="danger" onClick={() => deleteBOM(c.parentid, c.componentid)}>Del</Btn>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
 
-    // ─── RENDER MODE SWITCHER ────────────────────────────────────
-    const renderModeSwitcher = () => (
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        <button
-          onClick={() => setMode('edit')}
-          style={{
-            padding: '8px 18px',
-            borderRadius: 20,
-            border: '2px solid',
-            borderColor: mode === 'edit' ? '#f59e0b' : '#2d2d2d',
-            background: mode === 'edit' ? '#f59e0b' : 'transparent',
-            color: mode === 'edit' ? '#000' : '#94a3b8',
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all .2s',
-          }}
-        >
-          📋 Edit Existing Recipe
-        </button>
-        <button
-          onClick={() => setMode('enroll')}
-          style={{
-            padding: '8px 18px',
-            borderRadius: 20,
-            border: '2px solid',
-            borderColor: mode === 'enroll' ? '#22c55e' : '#2d2d2d',
-            background: mode === 'enroll' ? '#22c55e' : 'transparent',
-            color: mode === 'enroll' ? '#000' : '#94a3b8',
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all .2s',
-          }}
-        >
-          ➕ Enroll New Recipe
-        </button>
-        <div style={{ marginLeft: 'auto', fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>
-          {validFinishedGoods.length} recipe{validFinishedGoods.length !== 1 ? 's' : ''} registered
+      <div style={{ 
+        background: '#333333', 
+        borderRadius: 8, 
+        padding: 16, 
+        border: '1px solid #555555',
+        marginTop: 8
+      }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: '#FFC107', marginBottom: 10 }}>
+          ➕ Add Material — {getProductName(bomParent)}
+        </p>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: '1fr 1fr auto auto', 
+          gap: 12, 
+          alignItems: 'flex-end'
+        }}>
+          <Select
+            label="Material"
+            value={newMaterial.componentid}
+            onChange={v => setNewMaterial({...newMaterial, componentid: v})}
+            options={products.map(p => ({ value: p.id, label: `${p.id} - ${p.name}` }))}
+          />
+          <Input
+            label="Qty per unit"
+            type="number"
+            value={newMaterial.qty}
+            onChange={v => setNewMaterial({...newMaterial, qty: +v})}
+            min={0}
+            step={0.001}
+          />
+          <Btn variant="warning" onClick={handleAddMaterial}>Save to BOM</Btn>
+          <Btn variant="ghost" size="sm" onClick={() => setNewMaterial({ componentid: '', qty: 0 })}>Clear</Btn>
         </div>
       </div>
-    );
+    </>
+  );
 
-    // ─── EDIT MODE ────────────────────────────────────────────────
-    const renderEditMode = () => (
-      <>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
-          <Select
-            label="Finished Good / Recipe"
-            value={bomParent}
-            onChange={v => setBomParent(v)}
-            options={validFinishedGoods.map(f => ({ value: f.id, label: `${f.id} – ${f.name}` }))}
-            style={{ minWidth: 220 }}
-          />
+  const renderEnrollMode = () => (
+    <Card title="➕ Enroll New Hot Sauce Recipe" subtitle="Register a new sauce as a finished good and define its ingredient BOM">
+      <div style={{ background: '#0f2a1a', borderRadius: 8, padding: 16, border: '1px solid #166534', marginBottom: 20 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: '#4CAF50', marginBottom: 12 }}>📝 Recipe Information</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+          <Input label="Recipe / Product Name *" value={newRecipe.name} onChange={v => setNewRecipe({...newRecipe, name: v})} placeholder="e.g. Ghost Pepper X-Treme" />
+          <Select label="Category" value={newRecipe.category} onChange={v => setNewRecipe({...newRecipe, category: v})} options={['Standard', 'Premium', 'Seasonal', 'Limited Edition', 'Extra Hot', 'Mild', 'Custom']} />
+          <Input label="Description (optional)" value={newRecipe.description} onChange={v => setNewRecipe({...newRecipe, description: v})} placeholder="e.g. Smoky habanero blend" />
         </div>
+      </div>
 
-        <div style={{ overflowX: 'auto', marginBottom: 20 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#f8fafc' }}>
-            <thead><tr style={{ background: '#2d2d2d' }}>
-              {['Material', 'Qty per unit', 'Unit', 'Actions'].map(h => (
-                <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: '#94a3b8' }}>{h}</th>
-              ))}
-            </tr></thead>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>🧪 Ingredient List <span style={{ fontSize: 11, color: '#B0B0B0', fontWeight: 400 }}>(quantities per batch)</span></p>
+          <span style={{ fontSize: 12, color: '#4CAF50', fontWeight: 600 }}>{ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ 
+            width: '100%', 
+            borderCollapse: 'collapse', 
+            fontSize: 12, 
+            color: '#FFFFFF', 
+            marginBottom: 12,
+            minWidth: '500px'
+          }}>
+            <thead>
+              <tr style={{ background: '#333333' }}>
+                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, color: '#B0B0B0', width: '20%' }}>Component</th>
+                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, color: '#B0B0B0', width: '25%' }}>Name</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#B0B0B0', width: '20%' }}>Qty per batch</th>
+                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, color: '#B0B0B0', width: '15%' }}>Unit</th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: '#B0B0B0', width: '20%' }}>Action</th>
+              </tr>
+            </thead>
             <tbody>
-              {children.length === 0 ? (
-                <tr><td colSpan={4} style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>No BOM entries.</td></tr>
+              {ingredients.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: 16, textAlign: 'center', color: '#808080', fontSize: 12 }}>No ingredients yet.</td>
+                </tr>
               ) : (
-                children.map(c => {
-                  const isEditing = editingRow === c.componentid;
-                  return (
-                    <tr key={c.componentid} style={{ borderBottom: '1px solid #2d2d2d' }}>
-                      {isEditing ? (
-                        <>
-                          <td style={{ padding: '8px 12px' }}>
-                            <Select
-                              value={editData.componentid}
-                              onChange={v => setEditData({...editData, componentid: v})}
-                              options={products.map(p => ({ value: p.id, label: `${p.id} - ${p.name}` }))}
-                            />
-                          </td>
-                          <td style={{ padding: '8px 12px' }}>
-                            <Input
-                              type="number"
-                              value={editData.quantity}
-                              onChange={v => setEditData({...editData, quantity: +v})}
-                              min={0}
-                              step={0.001}
-                              style={{ width: 80, textAlign: 'right' }}
-                            />
-                          </td>
-                          <td style={{ padding: '8px 12px', color: '#94a3b8' }}>
-                            {getProductUnit(c.componentid)}
-                          </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                            <Btn size="sm" variant="success" onClick={() => saveEditRow(c.parentid, c.componentid)}>Save</Btn>
-                            <Btn size="sm" variant="ghost" onClick={cancelEditRow} style={{ marginLeft: 6 }}>Cancel</Btn>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td style={{ padding: '8px 12px', fontWeight: 600 }}>{getProductName(c.componentid)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right' }}>{c.quantity}</td>
-                          <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{getProductUnit(c.componentid)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                            <Btn size="sm" variant="primary" onClick={() => startEditRow(c)}>Edit</Btn>
-                            <Btn size="sm" variant="danger" onClick={() => deleteBOM(c.parentid, c.componentid)} style={{ marginLeft: 6 }}>Del</Btn>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  );
-                })
+                ingredients.map((r, i) => (
+                  <tr key={r.componentid} style={{ borderBottom: '1px solid #333333', background: i % 2 === 0 ? 'transparent' : '#1E1E1E' }}>
+                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: 11, color: '#B0B0B0' }}>{r.componentid}</td>
+                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.name}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.001}
+                        value={r.qty}
+                        onChange={e => updateIngredientQty(r.componentid, e.target.value)}
+                        style={{ 
+                          width: '90px', 
+                          padding: '4px 7px', 
+                          borderRadius: 5, 
+                          border: '1.5px solid #333333', 
+                          fontSize: 12, 
+                          textAlign: 'right',
+                          background: '#141414', 
+                          color: '#FFFFFF' 
+                        }}
+                      />
+                    </td>
+                    <td style={{ padding: '8px 10px', color: '#B0B0B0' }}>{r.unit}</td>
+                    <td style={{ padding: '8px 8px', textAlign: 'center' }}>
+                      <Btn size="sm" variant="danger" onClick={() => removeIngredient(r.componentid)}>✕</Btn>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Add material */}
-        <div style={{ background: '#2d2d2d', borderRadius: 8, padding: 16, border: '1px solid #4b5563' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 10 }}>➕ Add Material — {getProductName(bomParent)}</p>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ background: '#0f1a0a', borderRadius: 8, padding: 14, border: '1px dashed #166534' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF50', marginBottom: 10, textTransform: 'uppercase', letterSpacing: .5 }}>➕ Add Ingredient from Material Master</p>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '2fr 1fr auto', 
+            gap: 10, 
+            alignItems: 'flex-end'
+          }}>
             <Select
-              label="Material"
-              value={newMaterial.componentid}
-              onChange={v => setNewMaterial({...newMaterial, componentid: v})}
-              options={products.map(p => ({ value: p.id, label: `${p.id} - ${p.name}` }))}
+              label="Component"
+              value={ingredientInput.componentid}
+              onChange={v => setIngredientInput({...ingredientInput, componentid: v})}
+              options={[{ value: '', label: '— Select material —' }, ...products.map(p => ({ value: p.id, label: `${p.id} – ${p.name}` }))]}
             />
             <Input
-              label="Qty per unit"
+              label="Qty per batch"
               type="number"
-              value={newMaterial.qty}
-              onChange={v => setNewMaterial({...newMaterial, qty: +v})}
+              value={ingredientInput.qty}
+              onChange={v => setIngredientInput({...ingredientInput, qty: +v})}
               min={0}
               step={0.001}
             />
-            <Btn variant="warning" onClick={handleAddMaterial}>Save to BOM</Btn>
-            <Btn variant="ghost" size="sm" onClick={() => setNewMaterial({ componentid: '', qty: 0 })}>Clear</Btn>
+            <Btn onClick={handleAddIngredient} variant="success" style={{ marginTop: 'auto' }}>➕ Add</Btn>
           </div>
         </div>
-      </>
-    );
+      </div>
 
-    // ─── ENROLL MODE ──────────────────────────────────────────────
-    const renderEnrollMode = () => (
-      <Card title="➕ Enroll New Hot Sauce Recipe" accent="#22c55e"
-        subtitle="Register a new sauce as a finished good and define its ingredient BOM">
-
-        <div style={{ background: '#0f2a1a', borderRadius: 8, padding: 16, border: '1px solid #166534', marginBottom: 20 }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', marginBottom: 12 }}>📝 Recipe Information</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-            <Input label="Recipe / Product Name *" value={newRecipe.name} onChange={v => setNewRecipe({...newRecipe, name: v})} placeholder="e.g. Ghost Pepper X-Treme" />
-            <Select label="Category" value={newRecipe.category} onChange={v => setNewRecipe({...newRecipe, category: v})} options={['Standard', 'Premium', 'Seasonal', 'Limited Edition', 'Extra Hot', 'Mild', 'Custom']} />
-            <Input label="Description (optional)" value={newRecipe.description} onChange={v => setNewRecipe({...newRecipe, description: v})} placeholder="e.g. Smoky habanero blend" />
-          </div>
+      <div style={{ 
+        background: '#141414', 
+        borderRadius: 10, 
+        padding: 18, 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        flexWrap: 'wrap', 
+        gap: 12, 
+        border: '1px solid #333333' 
+      }}>
+        <div>
+          <div style={{ color: '#B0B0B0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>READY TO ENROLL</div>
+          <div style={{ color: '#FFFFFF', fontWeight: 700, fontSize: 15 }}>{newRecipe.name || <span style={{ color: '#808080', fontStyle: 'italic' }}>No name set</span>}</div>
+          <div style={{ color: '#808080', fontSize: 12, marginTop: 2 }}>{newRecipe.category} · {ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''}</div>
         </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>🧪 Ingredient List <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(quantities per batch)</span></p>
-            <span style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>{ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''}</span>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#f8fafc', marginBottom: 12 }}>
-              <thead><tr style={{ background: '#2d2d2d' }}>
-                {['Component', 'Name', 'Qty per batch', 'Unit', ''].map(h => (
-                  <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, color: '#94a3b8' }}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {ingredients.length === 0 ? (
-                  <tr><td colSpan={5} style={{ padding: 16, textAlign: 'center', color: '#64748b', fontSize: 12 }}>No ingredients yet.</td></tr>
-                ) : (
-                  ingredients.map((r, i) => (
-                    <tr key={r.componentid} style={{ borderBottom: '1px solid #2d2d2d', background: i % 2 === 0 ? 'transparent' : '#1a1a1a' }}>
-                      <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>{r.componentid}</td>
-                      <td style={{ padding: '8px 10px', fontWeight: 600 }}>{r.name}</td>
-                      <td style={{ padding: '8px 10px' }}>
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.001}
-                          value={r.qty}
-                          onChange={e => updateIngredientQty(r.componentid, e.target.value)}
-                          style={{ width: 90, padding: '4px 7px', borderRadius: 5, border: '1.5px solid #2d2d2d', fontSize: 12, background: '#0a0a0a', color: '#f8fafc' }}
-                        />
-                      </td>
-                      <td style={{ padding: '8px 10px', color: '#94a3b8' }}>{r.unit}</td>
-                      <td style={{ padding: '8px 8px' }}><Btn size="sm" variant="danger" onClick={() => removeIngredient(r.componentid)}>✕</Btn></td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ background: '#0f1a0a', borderRadius: 8, padding: 14, border: '1px dashed #166534' }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', marginBottom: 10, textTransform: 'uppercase', letterSpacing: .5 }}>➕ Add Ingredient from Material Master</p>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <Select
-                label="Component"
-                value={ingredientInput.componentid}
-                onChange={v => setIngredientInput({...ingredientInput, componentid: v})}
-                options={[{ value: '', label: '— Select material —' }, ...products.map(p => ({ value: p.id, label: `${p.id} – ${p.name}` }))]}
-                style={{ minWidth: 220 }}
-              />
-              <Input
-                label="Qty per batch"
-                type="number"
-                value={ingredientInput.qty}
-                onChange={v => setIngredientInput({...ingredientInput, qty: +v})}
-                min={0}
-                step={0.001}
-                style={{ width: 120 }}
-              />
-              <Btn onClick={handleAddIngredient} variant="success" style={{ marginTop: 'auto' }}>➕ Add</Btn>
-            </div>
-          </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Btn variant="ghost" onClick={() => { setMode('edit'); setNewRecipe({ name: '', category: 'Standard', description: '' }); setIngredients([]); }}>Cancel</Btn>
+          <Btn variant="success" size="lg" onClick={handleEnroll} disabled={!newRecipe.name.trim() || ingredients.length === 0}>✅ Enroll Recipe</Btn>
         </div>
+      </div>
+    </Card>
+  );
 
-        <div style={{ background: '#0a0a0a', borderRadius: 10, padding: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, border: '1px solid #2d2d2d' }}>
-          <div>
-            <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>READY TO ENROLL</div>
-            <div style={{ color: '#f8fafc', fontWeight: 700, fontSize: 15 }}>{newRecipe.name || <span style={{ color: '#4b5563', fontStyle: 'italic' }}>No name set</span>}</div>
-            <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>{newRecipe.category} · {ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''}</div>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Btn variant="ghost" onClick={() => { setMode('edit'); setNewRecipe({ name: '', category: 'Standard', description: '' }); setIngredients([]); }}>Cancel</Btn>
-            <Btn variant="success" size="lg" onClick={handleEnroll} disabled={!newRecipe.name.trim() || ingredients.length === 0}>✅ Enroll Recipe</Btn>
-          </div>
-        </div>
-      </Card>
-    );
-
-    // ─── MAIN RETURN ──────────────────────────────────────────────
-    return (
+  return (
+    <Container>
       <div style={{ display: 'grid', gap: 20 }}>
         {renderModeSwitcher()}
         {mode === 'edit' && renderEditMode()}
         {mode === 'enroll' && renderEnrollMode()}
       </div>
-    );
-  }
+    </Container>
+  );
+}
 
-  // ── ALERTS TAB ─────────────────────────────────────────────────
+  // ─── ALERTS TAB ─────────────────────────────────────────────────
   function AlertsTab() {
     const crit = mrpData.filter(m => m.status === 'Critical');
     const low = mrpData.filter(m => m.status === 'Low');
     const overdue = workOrders.filter(o => o.status !== 'Completed' && o.status !== 'Cancelled' && o.scheduled_date < today());
     const lowStock = alerts.lowStock;
 
-    return <div style={{ display: 'grid', gap: 16 }}>
-      {overdue.length > 0 && <Card title={`⚠️ Overdue Work Orders (${overdue.length})`} accent="#dc2626">
-        {overdue.map(o => <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #2d2d2d' }}>
-          <div><span style={{ fontWeight: 700, color: '#dc2626' }}>{o.id}</span> — {getProductName(o.product_id)} | {fmt(o.quantity)} bottles</div>
-          <div style={{ fontSize: 12, color: '#dc2626' }}>Due: {o.scheduled_date}</div>
-        </div>)}
-      </Card>}
-      {crit.length > 0 && <Card title={`🚨 Critical Shortages (${crit.length})`} accent="#dc2626">
-        {crit.map(m => <div key={m.material} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #2d2d2d' }}>
-          <div><div style={{ fontWeight: 700, color: '#f8fafc' }}>{m.name}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>Need: {fmtNum(m.gross)} {m.unit} | Have: {fmtNum(m.onHand)} | Short: {fmtNum(m.net)}</div></div>
-          <Badge type="danger">SHORT</Badge>
-        </div>)}
-      </Card>}
-      {low.length > 0 && <Card title={`⚠️ Low Materials (${low.length})`} accent="#f59e0b">
-        {low.map(m => <div key={m.material} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #2d2d2d' }}>
-          <div><div style={{ fontWeight: 700, color: '#f8fafc' }}>{m.name}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>Need: {fmtNum(m.gross)} | Have: {fmtNum(m.onHand)} {m.unit}</div></div>
-          <Badge type="warning">LOW</Badge>
-        </div>)}
-      </Card>}
-      {lowStock.length > 0 && <Card title={`📦 Below Reorder Point (${lowStock.length})`} accent="#f59e0b">
-        {lowStock.map(p => <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #2d2d2d' }}>
-          <div><div style={{ fontWeight: 700, color: '#f8fafc' }}>{p.name}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>On hand: {p.currentstock} | SS: {p.safetystock} | ROP: {getProductReorderPoint(p.id)}</div></div>
-          <Badge type={p.currentstock <= p.safetystock ? 'danger' : 'warning'}>{p.currentstock <= p.safetystock ? 'CRITICAL' : 'REORDER'}</Badge>
-        </div>)}
-      </Card>}
-      {overdue.length === 0 && crit.length === 0 && low.length === 0 && lowStock.length === 0 &&
-        <Card title="All Clear!" accent="#ea580c">
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <div style={{ fontSize: 48 }}>✅</div>
-            <div style={{ fontWeight: 700, color: '#ea580c', marginTop: 10, fontSize: 16 }}>No Alerts</div>
-            <div style={{ color: '#94a3b8', fontSize: 13 }}>Operations running smoothly.</div>
-          </div>
-        </Card>
-      }
-    </div>;
+    return (
+      <Container>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {overdue.length > 0 && <Card title={`⚠️ Overdue Work Orders (${overdue.length})`}>
+            {overdue.map(o => <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #333333' }}>
+              <div><span style={{ fontWeight: 700, color: '#E63946' }}>{o.id}</span> — {getProductName(o.product_id)} | {fmt(o.quantity)} bottles</div>
+              <div style={{ fontSize: 12, color: '#E63946' }}>Due: {o.scheduled_date}</div>
+            </div>)}
+          </Card>}
+          {crit.length > 0 && <Card title={`🚨 Critical Shortages (${crit.length})`}>
+            {crit.map(m => <div key={m.material} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #333333' }}>
+              <div><div style={{ fontWeight: 700, color: '#FFFFFF' }}>{m.name}</div><div style={{ fontSize: 11, color: '#B0B0B0' }}>Need: {fmtNum(m.gross)} {m.unit} | Have: {fmtNum(m.onHand)} | Short: {fmtNum(m.net)}</div></div>
+              <Badge type="danger">SHORT</Badge>
+            </div>)}
+          </Card>}
+          {low.length > 0 && <Card title={`⚠️ Low Materials (${low.length})`}>
+            {low.map(m => <div key={m.material} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #333333' }}>
+              <div><div style={{ fontWeight: 700, color: '#FFFFFF' }}>{m.name}</div><div style={{ fontSize: 11, color: '#B0B0B0' }}>Need: {fmtNum(m.gross)} | Have: {fmtNum(m.onHand)} {m.unit}</div></div>
+              <Badge type="warning">LOW</Badge>
+            </div>)}
+          </Card>}
+          {lowStock.length > 0 && <Card title={`📦 Below Reorder Point (${lowStock.length})`}>
+            {lowStock.map(p => <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #333333' }}>
+              <div><div style={{ fontWeight: 700, color: '#FFFFFF' }}>{p.name}</div><div style={{ fontSize: 11, color: '#B0B0B0' }}>On hand: {p.currentstock} | SS: {p.safetystock} | ROP: {getProductReorderPoint(p.id)}</div></div>
+              <Badge type={p.currentstock <= p.safetystock ? 'danger' : 'warning'}>{p.currentstock <= p.safetystock ? 'CRITICAL' : 'REORDER'}</Badge>
+            </div>)}
+          </Card>}
+          {overdue.length === 0 && crit.length === 0 && low.length === 0 && lowStock.length === 0 &&
+            <Card title="All Clear!">
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <div style={{ fontSize: 48 }}>✅</div>
+                <div style={{ fontWeight: 700, color: '#E63946', marginTop: 10, fontSize: 16 }}>No Alerts</div>
+                <div style={{ color: '#B0B0B0', fontSize: 13 }}>Operations running smoothly.</div>
+              </div>
+            </Card>
+          }
+        </div>
+      </Container>
+    );
   }
 
   // ─── HISTORY TAB ────────────────────────────────────────────────
   function HistoryTab() {
-    return <Card title="Activity Log" accent="#64748b">
-      {auditLogs.length === 0 ? <p style={{ color: '#64748b' }}>No activity yet.</p> :
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: '#f8fafc' }}>
-          <thead><tr style={{ background: '#2d2d2d' }}>
-            <th style={{ padding: '10px 12px' }}>#</th><th>Timestamp</th><th>Action</th><th>Table</th><th>Record</th><th>Details</th>
-          </tr></thead>
-          <tbody>
-            {auditLogs.map((h, i) => (
-              <tr key={h.id} style={{ borderBottom: '1px solid #2d2d2d' }}>
-                <td style={{ padding: '10px 12px' }}>{i+1}</td>
-                <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: '#94a3b8' }}>{new Date(h.changed_at).toLocaleString()}</td>
-                <td style={{ padding: '10px 12px', fontWeight: 700, color: '#dc2626' }}>{h.action}</td>
-                <td style={{ padding: '10px 12px' }}>{h.table_name}</td>
-                <td style={{ padding: '10px 12px', fontFamily: 'monospace', color: '#94a3b8' }}>{h.record_id}</td>
-                <td style={{ padding: '10px 12px' }}>
-                  {h.old_data && h.new_data ? <details><summary style={{ color: '#f59e0b', cursor: 'pointer' }}>View diff</summary><pre style={{ fontSize: 10, background: '#0a0a0a', padding: 6, borderRadius: 4, color: '#f8fafc' }}>{JSON.stringify({ old: h.old_data, new: h.new_data }, null, 2)}</pre></details> :
-                    h.old_data ? <details><summary style={{ color: '#dc2626', cursor: 'pointer' }}>Deleted</summary><pre style={{ fontSize: 10, background: '#0a0a0a', padding: 6, borderRadius: 4, color: '#f8fafc' }}>{JSON.stringify(h.old_data, null, 2)}</pre></details> :
-                    h.new_data ? <details><summary style={{ color: '#ea580c', cursor: 'pointer' }}>Added</summary><pre style={{ fontSize: 10, background: '#0a0a0a', padding: 6, borderRadius: 4, color: '#f8fafc' }}>{JSON.stringify(h.new_data, null, 2)}</pre></details> :
+    return (
+      <Container>
+        <Card title="Activity Log">
+          {auditLogs.length === 0 ? <p style={{ color: '#808080' }}>No activity yet.</p> :
+          <ResponsiveTable
+            headers={[
+              { key: 'id', label: '#' },
+              { key: 'changed_at', label: 'Timestamp' },
+              { key: 'action', label: 'Action' },
+              { key: 'table_name', label: 'Table' },
+              { key: 'record_id', label: 'Record' },
+              { key: 'details', label: 'Details' },
+            ]}
+            data={auditLogs}
+            renderRow={(h, i) => (
+              <>
+                <td data-label="#">{i+1}</td>
+                <td data-label="Timestamp" style={{ whiteSpace: 'nowrap', color: '#B0B0B0' }}>{new Date(h.changed_at).toLocaleString()}</td>
+                <td data-label="Action" style={{ fontWeight: 700, color: '#E63946' }}>{h.action}</td>
+                <td data-label="Table">{h.table_name}</td>
+                <td data-label="Record" style={{ fontFamily: 'monospace', color: '#B0B0B0' }}>{h.record_id}</td>
+                <td data-label="Details">
+                  {h.old_data && h.new_data ? <details><summary style={{ color: '#FFC107', cursor: 'pointer' }}>View diff</summary><pre style={{ fontSize: 10, background: '#141414', padding: 6, borderRadius: 4, color: '#FFFFFF' }}>{JSON.stringify({ old: h.old_data, new: h.new_data }, null, 2)}</pre></details> :
+                    h.old_data ? <details><summary style={{ color: '#E63946', cursor: 'pointer' }}>Deleted</summary><pre style={{ fontSize: 10, background: '#141414', padding: 6, borderRadius: 4, color: '#FFFFFF' }}>{JSON.stringify(h.old_data, null, 2)}</pre></details> :
+                    h.new_data ? <details><summary style={{ color: '#E63946', cursor: 'pointer' }}>Added</summary><pre style={{ fontSize: 10, background: '#141414', padding: 6, borderRadius: 4, color: '#FFFFFF' }}>{JSON.stringify(h.new_data, null, 2)}</pre></details> :
                     '—'}
                 </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>}
-    </Card>;
+              </>
+            )}
+            sortable
+          />}
+        </Card>
+      </Container>
+    );
   }
 
   // ─── LOGIN FORM ────────────────────────────────────────────────────
@@ -2136,15 +2264,15 @@ function ProcurementTab() {
     };
 
     return (
-      <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: '#1a1a1a', borderRadius: 16, padding: 40, border: '1px solid #2d2d2d', maxWidth: 380, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,.6)' }}>
+      <div style={{ minHeight: '100vh', background: '#0D0D0D', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#1E1E1E', borderRadius: 16, padding: 40, border: '1px solid #333333', maxWidth: 380, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,.6)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🌶️</div>
-          <div style={{ color: '#f8fafc', fontWeight: 800, fontSize: 22, marginBottom: 4 }}>CHILIPHILIC REPUBLIC</div>
-          <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 28 }}>HomeCraft Hot Sauce</div>
+          <div style={{ color: '#FFFFFF', fontWeight: 800, fontSize: 22, marginBottom: 4 }}>CHILIPHILIC REPUBLIC</div>
+          <div style={{ color: '#B0B0B0', fontSize: 12, marginBottom: 28 }}>HomeCraft Hot Sauce</div>
           <form onSubmit={handleLogin} style={{ display: 'grid', gap: 12 }}>
             <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" required />
             <Input label="Password" type="password" value={password} onChange={setPassword} placeholder="••••••••" required />
-            {error && <div style={{ color: '#dc2626', fontSize: 12, textAlign: 'center' }}>{error}</div>}
+            {error && <div style={{ color: '#E63946', fontSize: 12, textAlign: 'center' }}>{error}</div>}
             <Btn onClick={handleLogin} disabled={loading} variant="primary" size="lg">
               {loading ? 'Signing in…' : 'Sign In'}
             </Btn>
@@ -2154,88 +2282,65 @@ function ProcurementTab() {
     );
   }
 
-  // ─── MAIN RENDER ─────────────────────────────────────────────────────
-  return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', fontFamily: "'Segoe UI', system-ui, sans-serif", color: '#f8fafc' }}>
-      {!session ? (
-        <LoginForm />
-      ) : (
-        <>
-          {notif && <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 999, background: notif.type === 'danger' ? '#dc2626' : notif.type === 'info' ? '#f97316' : notif.type === 'warning' ? '#f59e0b' : '#ea580c', color: '#fff', padding: '12px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: '0 4px 20px rgba(0,0,0,.5)', maxWidth: 360 }}>{notif.msg}</div>}
+  // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────────
+  const shortcuts = {
+    'ctrl+n': () => {
+      if (activeTab === 'production') {
+        // Focus on work order form
+        document.querySelector('input[placeholder="Qty (bottles)"]')?.focus();
+      } else {
+        setActiveTab('production');
+      }
+    },
+    'ctrl+r': () => fetchData(),
+    'ctrl+f': () => {
+      const searchInput = document.querySelector('input[placeholder*="Search"]');
+      if (searchInput) searchInput.focus();
+    },
+  };
 
-          {/* HEADER */}
-          <div style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #b91c1c 40%, #d97706 100%)', padding: '0 24px', boxShadow: '0 4px 20px rgba(0,0,0,.6)' }}>
-            <div style={{ maxWidth: 1320, margin: '0 auto' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ fontSize: 32 }}>🌶️</div>
-                  <div>
-                    <div style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: .5 }}>CHILIPHILIC REPUBLIC</div>
-                    <div style={{ color: '#fcd34d', fontSize: 11, fontWeight: 500, letterSpacing: .8 }}>HOMECRAFT HOT SAUCE</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                  <div style={{ textAlign: 'right' }}><div style={{ color: '#fcd34d', fontSize: 10 }}>TODAY</div><div style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{today()}</div></div>
-                  <div style={{ textAlign: 'right' }}><div style={{ color: '#fcd34d', fontSize: 10 }}>DAILY CAP</div><div style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{fmt(DAILY_CAPACITY)} bottles</div></div>
-                  {alerts.criticalStock.length + alerts.overdueOrders.length > 0 && <div style={{ background: '#dc2626', color: '#fff', borderRadius: 99, padding: '5px 12px', fontSize: 12, fontWeight: 700, animation: 'pulse 1.5s infinite' }}>🚨 {alerts.criticalStock.length + alerts.overdueOrders.length} Alerts</div>}
-                </div>
-                <button 
-                  onClick={() => supabase.auth.signOut()} 
-                  style={{ background: 'transparent', border: '1px solid #fcd34d44', color: '#fcd34d', padding: '6px 14px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600, transition: 'all .2s' }}
-                  onMouseOver={e => e.target.style.background = '#fcd34d22'}
-                  onMouseOut={e => e.target.style.background = 'transparent'}
-                >
-                  Sign Out
-                </button>
-              </div>
-              {/* TABS – black background, bigger font, active white */}
-              <div style={{ display: 'flex', gap: 2, overflowX: 'auto', paddingBottom: 1 }}>
-                {TABS.map(t => (
-                  <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-                    padding: '12px 20px',
-                    border: 'none',
-                    background: '#0a0a0a',
-                    color: activeTab === t.id ? '#ffffff' : '#94a3b8',
-                    fontWeight: activeTab === t.id ? 700 : 500,
-                    fontSize: 16,
-                    borderRadius: '8px 8px 0 0',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    borderBottom: activeTab === t.id ? '3px solid #dc2626' : '3px solid transparent',
-                    transition: 'all .2s',
-                    opacity: activeTab === t.id ? 1 : 0.8,
-                    marginRight: '2px',
-                  }}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+  useKeyboard(shortcuts);
 
-          {/* CONTENT */}
-          <div style={{ maxWidth: 1320, margin: '0 auto', padding: '24px 20px' }}>
-            {activeTab === 'dashboard' && <Dashboard />}
-            {activeTab === 'products' && <ProductsTab />}
-            {activeTab === 'mps' && <MPSTab />}
-            {activeTab === 'production' && <WorkOrdersTab />}
-            {activeTab === 'mrp' && <MRPTab />}
-            {activeTab === 'inventory' && <InventoryTab />}
-            {activeTab === 'procurement' && <ProcurementTab />}
-            {activeTab === 'bom' && <BOMTab />}
-            {activeTab === 'alerts' && <AlertsTab />}
-            {activeTab === 'history' && <HistoryTab />}
-          </div>
-
-          <style>{`
-            @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
-            input:focus, select:focus { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
-            ::-webkit-scrollbar { height: 6px; width: 6px; }
-            ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-            ::-webkit-scrollbar-track { background: #1a1a1a; }
-          `}</style>
-        </>
-      )}
-    </div>
-  );
+// ─── MAIN RENDER ─────────────────────────────────────────────────────
+if (!session) {
+  return <LoginForm />;
 }
+
+return (
+  <MainLayout 
+    activeTab={activeTab} 
+    onTabChange={setActiveTab}
+  >
+    {/* Content - Direct JSX elements, not a function */}
+    <div style={{ padding: '20px 0' }}>
+      {activeTab === 'dashboard' && <Dashboard />}
+      {activeTab === 'products' && <ProductsTab />}
+      {activeTab === 'mps' && <MPSTab />}
+      {activeTab === 'production' && <WorkOrdersTab />}
+      {activeTab === 'mrp' && <MRPTab />}
+      {activeTab === 'inventory' && <InventoryTab />}
+      {activeTab === 'procurement' && <ProcurementTab />}
+      {activeTab === 'bom' && <BOMTab />}
+      {activeTab === 'alerts' && <AlertsTab />}
+      {activeTab === 'history' && <HistoryTab />}
+    </div>
+
+    {/* Keyboard Shortcuts Help */}
+    <KeyboardShortcuts shortcuts={shortcuts} />
+
+    <style>{`
+      @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+      input:focus, select:focus { 
+        border-color: #E63946 !important; 
+        box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.15); 
+      }
+      ::-webkit-scrollbar { height: 6px; width: 6px; }
+      ::-webkit-scrollbar-thumb { background: #333333; border-radius: 4px; }
+      ::-webkit-scrollbar-track { background: #0D0D0D; }
+      .btn-primary:hover { opacity: 0.85; transform: scale(0.98); }
+    `}</style>
+  </MainLayout>
+);
+}
+
+export default App;
